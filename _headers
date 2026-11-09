@@ -1,0 +1,10 @@
+/admin
+  Cache-Control: no-store
+  Referrer-Policy: no-referrer
+  X-Frame-Options: DENY
+/admin.html
+  Cache-Control: no-store
+  Referrer-Policy: no-referrer
+  X-Frame-Options: DENY
+/*
+  X-Content-Type-Options: nosniff

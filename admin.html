@@ -4,47 +4,28 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Admin - Docházka</title>
-  <style>
-    body {
-      font-family: system-ui, sans-serif;
-      max-width: 600px;
-      margin: 40px auto;
-      padding: 20px;
-    }
-    button {
-      padding: 12px 24px;
-      font-size: 16px;
-      background: #2563eb;
-      color: white;
-      border: none;
-      border-radius: 8px;
-      cursor: pointer;
-      margin-bottom: 20px;
-      margin-right: 10px;
-    }
-    #code {
-      font-size: 48px;
-      font-weight: bold;
-      letter-spacing: 8px;
-      margin: 20px 0;
-    }
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      margin-top: 20px;
-    }
-    th, td {
-      border: 1px solid #ddd;
-      padding: 10px;
-      text-align: left;
-    }
-    th {
-      background: #f3f4f6;
-    }
-  </style>
+  <link rel="stylesheet" href="/style.css">
 </head>
 <body>
-  <h1>Admin Docházka</h1>
+  <p class="eyebrow">Přehled třídy</p>
+  <h1>Docházka pod kontrolou.</h1>
+  <p>Přehled přítomnosti, který se aktualizuje za vás.</p>
+  <section id="auth-panel" class="card">
+    <h2 id="auth-title">Přihlášení</h2>
+    <p id="auth-help" class="muted"></p>
+    <form id="auth-form">
+      <label for="username">Přihlašovací jméno</label>
+      <input id="username" name="username" autocomplete="username" required minlength="3" maxlength="40">
+      <label for="password">Heslo</label>
+      <input id="password" name="password" type="password" autocomplete="current-password" required minlength="12" maxlength="128">
+      <div id="setup-field" hidden><label for="setup-key">Jednorázový kód pro založení administrace</label><input id="setup-key" type="password" autocomplete="off"></div>
+      <button id="auth-submit" type="submit">Přihlásit se</button>
+    </form>
+    <p id="auth-message" role="status"></p>
+  </section>
+  <main id="dashboard" hidden>
+  <div class="topbar"><span id="signed-in" class="muted"></span><button id="logout" class="secondary">Odhlásit se</button></div>
+  <section class="card">
   
   <button onclick="startSession()">Spustit novou hodinu</button>
   
@@ -52,7 +33,17 @@
   <p id="countdown">Není spuštěná hodina.</p>
   <p id="error" role="status" style="color: #b91c1c"></p>
   
-  <h2>Všichni žáci</h2>
+  </section>
+  <section id="owner-tools" class="card" hidden>
+    <h2>Přístup pro učitele</h2>
+    <p class="muted">Vytvořte jednorázovou pozvánku platnou 24 hodin. Učitel si přes ni zvolí své jméno a heslo. Odkaz předejte pouze učiteli.</p>
+    <button id="invite-button" class="secondary">Vytvořit pozvánku učitele</button>
+    <input id="invite-url" aria-label="Odkaz pro učitele" readonly hidden>
+    <p id="invite-message" role="status"></p>
+  </section>
+  <section class="card">
+  <div class="topbar"><h2>Všichni žáci</h2><span class="muted">Aktualizace každých 5 sekund</span></div>
+  <div class="table-wrap">
   
   <table>
     <thead>
@@ -64,18 +55,20 @@
     </thead>
     <tbody id="list"></tbody>
   </table>
+  </div></section></main>
 
   <script>
+    let signedIn = false;
     async function startSession() {
       try {
         const res = await fetch('/api/start', { method: 'POST' });
         const data = await res.json();
-        
+        if (res.status === 401) { await refreshAuth(); return; }
         if (data.code) {
           document.getElementById('code').textContent = data.code;
           loadList();
         } else {
-          alert('Chyba při generování kódu');
+          alert(data.error || 'Chyba při generování kódu');
         }
       } catch (err) {
         alert('Chyba připojení');
@@ -108,11 +101,12 @@
     }
 
     async function loadList() {
-      if (loading) return;
+      if (loading || !signedIn) return;
       loading = true;
       try {
         const res = await fetch('/api/list', { cache: 'no-store' });
         const data = await res.json();
+        if (res.status === 401) { await refreshAuth(); return; }
         if (!res.ok) throw new Error(data.error || 'Chyba při načítání');
         document.getElementById('code').textContent = data.code || '----';
         expiresAt = data.expiresAt;
@@ -128,6 +122,7 @@
             td.textContent = value;
             tr.appendChild(td);
           });
+          tr.children[1].className = row.present ? 'present' : 'absent';
           tbody.appendChild(tr);
         });
         document.getElementById('error').textContent = '';
@@ -138,7 +133,60 @@
       }
     }
 
-    loadList();
+    let mode = 'login';
+    let invite = new URLSearchParams(location.hash.slice(1)).get('invite');
+    if (invite) history.replaceState(null, '', location.pathname);
+    async function authPost(body) {
+      const res = await fetch('/api/auth', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Akce se nezdařila');
+      return data;
+    }
+    async function refreshAuth() {
+      try {
+        const res=await fetch('/api/auth',{cache:'no-store'});
+        const data=await res.json();
+        if (!res.ok) throw new Error(data.error);
+        signedIn=Boolean(data.user);
+        document.getElementById('dashboard').hidden=!signedIn;
+        document.getElementById('auth-panel').hidden=signedIn;
+        document.getElementById('list').replaceChildren();
+        document.getElementById('code').textContent='----';
+        document.getElementById('owner-tools').hidden=data.user?.role!=='owner';
+        if (signedIn) {
+          document.getElementById('signed-in').textContent='Přihlášen: '+data.user.username;
+          invite=null; await loadList(); return;
+        }
+        mode=invite?'accept':data.needsSetup?'setup':'login';
+        document.getElementById('auth-title').textContent=mode==='setup'?'Založení správce':mode==='accept'?'Vítejte, pane učiteli':'Přihlášení';
+        document.getElementById('auth-submit').textContent=mode==='login'?'Přihlásit se':'Nastavit heslo a pokračovat';
+        document.getElementById('setup-field').hidden=mode!=='setup';
+        document.getElementById('username').readOnly=mode==='setup';
+        if (mode==='setup') document.getElementById('username').value='thortyy';
+        document.getElementById('password').autocomplete=mode==='login'?'current-password':'new-password';
+        document.getElementById('auth-help').textContent=mode==='setup'
+          ? (data.setupConfigured?'Zvol si vlastní heslo alespoň o 12 znacích a zadej jednorázový kód.':'Správce nejprve musí v Cloudflare nastavit jednorázový kód ADMIN_SETUP_KEY (alespoň 20 znaků).')
+          :mode==='accept'?'Zvolte si přihlašovací jméno bez diakritiky a vlastní heslo alespoň o 12 znacích.':'Přihlaste se svým jménem a heslem.';
+      } catch(err) {document.getElementById('auth-message').textContent=err.message || 'Chyba připojení';}
+    }
+    document.getElementById('auth-form').addEventListener('submit',async event=>{
+      event.preventDefault();const button=document.getElementById('auth-submit');button.disabled=true;
+      try {
+        await authPost({action:mode,username:document.getElementById('username').value,password:document.getElementById('password').value,setupKey:document.getElementById('setup-key').value,invite});
+        document.getElementById('password').value='';document.getElementById('setup-key').value='';document.getElementById('auth-message').textContent='';
+        await refreshAuth();
+      } catch(err){document.getElementById('auth-message').textContent=err.message;}finally{button.disabled=false;}
+    });
+    document.getElementById('logout').onclick=async()=>{
+      try {await authPost({action:'logout'});await refreshAuth();document.getElementById('invite-url').value='';document.getElementById('invite-url').hidden=true;}
+      catch(err){document.getElementById('error').textContent=err.message;}
+    };
+    document.getElementById('invite-button').onclick=async()=>{
+      const button=document.getElementById('invite-button');button.disabled=true;
+      try {const data=await authPost({action:'invite'});const input=document.getElementById('invite-url');input.value=data.url;input.hidden=false;input.select();document.getElementById('invite-message').textContent='Zkopírujte odkaz a předejte ho učiteli.';}
+      catch(err){document.getElementById('invite-message').textContent=err.message;}finally{button.disabled=false;}
+    };
+    refreshAuth();
     setInterval(loadList, 5000);
     setInterval(updateCountdown, 1000);
   </script>

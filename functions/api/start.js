@@ -1,7 +1,11 @@
+import { requireAdmin } from '../_shared/auth.js';
 import { ensureWindows, json } from '../_shared/attendance.js';
 
-export async function onRequestPost({ env }) {
+export async function onRequestPost(context) {
+  const { env } = context;
   try {
+    const denied = await requireAdmin(context, true);
+    if (denied) return denied;
     await ensureWindows(env.DB);
     const code = crypto.randomUUID().replace(/-/g, '').slice(0, 8).toUpperCase();
     const expiresAt = Date.now() + 10 * 60 * 1000;
