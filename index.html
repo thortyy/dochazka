@@ -2,11 +2,83 @@
 <html lang="cs">
 <head>
   <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Docházka</title>
+  <style>
+    body {
+      font-family: system-ui, sans-serif;
+      max-width: 400px;
+      margin: 40px auto;
+      padding: 20px;
+      text-align: center;
+    }
+    input, button {
+      width: 100%;
+      padding: 12px;
+      margin: 8px 0;
+      font-size: 16px;
+      box-sizing: border-box;
+    }
+    button {
+      background: #2563eb;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+    }
+    button:hover {
+      background: #1d4ed8;
+    }
+    #message {
+      margin-top: 16px;
+      font-weight: bold;
+    }
+  </style>
 </head>
 <body>
-  <h1>Docházka funguje</h1>
-  <p>Stránka je nasazená.</p>
+  <h1>Docházka</h1>
+  
+  <input type="text" id="name" placeholder="Tvoje jméno" required>
+  <input type="text" id="code" placeholder="Kód hodiny" required>
+  <button onclick="checkIn()">Jsem tady</button>
+  
+  <div id="message"></div>
+
+  <script>
+    async function checkIn() {
+      const name = document.getElementById('name').value.trim();
+      const code = document.getElementById('code').value.trim().toUpperCase();
+      const message = document.getElementById('message');
+
+      if (!name || !code) {
+        message.textContent = 'Vyplň jméno i kód';
+        message.style.color = 'red';
+        return;
+      }
+
+      try {
+        const res = await fetch('/api/checkin', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name, code })
+        });
+
+        const data = await res.json();
+
+        if (res.ok) {
+          message.textContent = 'Úspěšně zapsáno!';
+          message.style.color = 'green';
+          document.getElementById('name').value = '';
+          document.getElementById('code').value = '';
+        } else {
+          message.textContent = data.error || 'Chyba';
+          message.style.color = 'red';
+        }
+      } catch (err) {
+        message.textContent = 'Chyba připojení';
+        message.style.color = 'red';
+      }
+    }
+  </script>
 </body>
 </html>
-
