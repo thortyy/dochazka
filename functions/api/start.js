@@ -1,17 +1,17 @@
-export async function onRequestPost(context) {
-  const { env } = context;
+import { ensureWindows, json } from '../_shared/attendance.js';
 
+export async function onRequestPost({ env }) {
   try {
-    const code = Math.random().toString(36).substring(2, 6).toUpperCase();
-
-    await env.DB.prepare('UPDATE sessions SET active = 0').run();
-
-    await env.DB.prepare(
-      'INSERT INTO sessions (code, active) VALUES (?, 1)'
-    ).bind(code).run();
-
-    return Response.json({ code });
+    await ensureWindows(env.DB);
+    const code = crypto.randomUUID().replace(/-/g, '').slice(0, 8).toUpperCase();
+    const expiresAt = Date.now() + 10 * 60 * 1000;
+    await env.DB.batch([
+      env.DB.prepare('UPDATE sessions SET active = 0'),
+      env.DB.prepare('INSERT INTO sessions (code, active) VALUES (?, 1)').bind(code),
+      env.DB.prepare('INSERT INTO attendance_windows (code, expires_at) VALUES (?, ?)').bind(code, expiresAt)
+    ]);
+    return json({ code, expiresAt, serverNow: Date.now() });
   } catch (err) {
-    return Response.json({ error: 'Chyba' }, { status: 500 });
+    return json({ error: 'Chyba při spuštění hodiny' }, 500);
   }
 }

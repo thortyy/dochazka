@@ -1,24 +1,29 @@
-export async function onRequestGet(context) {
-  const { env } = context;
+import { ensureWindows, json, roster, findStudent } from '../_shared/attendance.js';
 
+export async function onRequestGet({ env }) {
   try {
-    const session = await env.DB.prepare(
-      'SELECT code FROM sessions WHERE active = 1'
-    ).first();
-
-    if (!session) {
-      return Response.json({ code: null, students: [] });
+    await ensureWindows(env.DB);
+    const session = await env.DB.prepare(`SELECT s.code, w.expires_at
+      FROM sessions s LEFT JOIN attendance_windows w ON s.code = w.code
+      WHERE s.active = 1`).first();
+    let results = [];
+    if (session) {
+      ({ results } = await env.DB.prepare(
+        'SELECT name, created_at FROM attendance WHERE code = ? ORDER BY created_at ASC'
+      ).bind(session.code).all());
     }
-
-    const { results } = await env.DB.prepare(
-      'SELECT name, created_at FROM attendance WHERE code = ? ORDER BY created_at DESC'
-    ).bind(session.code).all();
-
-    return Response.json({
-      code: session.code,
-      students: results
+    const present = new Map();
+    for (const row of results) {
+      const student = findStudent(row.name);
+      if (student && !present.has(student)) present.set(student, row.created_at);
+    }
+    return json({
+      code: session?.code ?? null,
+      expiresAt: session?.expires_at ?? null,
+      serverNow: Date.now(),
+      students: roster.map(name => ({ name, present: present.has(name), created_at: present.get(name) ?? null }))
     });
   } catch (err) {
-    return Response.json({ error: 'Chyba' }, { status: 500 });
+    return json({ error: 'Chyba při načítání docházky' }, 500);
   }
 }

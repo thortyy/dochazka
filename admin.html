@@ -47,17 +47,19 @@
   <h1>Admin Docházka</h1>
   
   <button onclick="startSession()">Spustit novou hodinu</button>
-  <button onclick="loadList()">Obnovit seznam</button>
   
   <div id="code">----</div>
+  <p id="countdown">Není spuštěná hodina.</p>
+  <p id="error" role="status" style="color: #b91c1c"></p>
   
-  <h2>Přítomní studenti</h2>
+  <h2>Všichni žáci</h2>
   
   <table>
     <thead>
       <tr>
         <th>Jméno</th>
-        <th>Čas</th>
+        <th>Stav</th>
+        <th>Čas příchodu</th>
       </tr>
     </thead>
     <tbody id="list"></tbody>
@@ -80,36 +82,65 @@
       }
     }
 
-    async function loadList() {
-      try {
-        const res = await fetch('/api/list');
-        const data = await res.json();
-        
-        // Zobraz aktuální kód
-        if (data.code) {
-          document.getElementById('code').textContent = data.code;
-        } else {
-          document.getElementById('code').textContent = '----';
-        }
+    let loading = false;
+    let expiresAt = null;
+    let serverOffset = 0;
+    let hasSession = false;
 
+    function updateCountdown() {
+      const el = document.getElementById('countdown');
+      if (!hasSession) {
+        el.textContent = 'Není spuštěná hodina.';
+        return;
+      }
+      const seconds = Math.max(0, Math.ceil((expiresAt - Date.now() - serverOffset) / 1000));
+      el.textContent = seconds > 0
+        ? `Do konce přihlášení: ${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, '0')}`
+        : 'Přihlášení je uzavřené. Časový limit vypršel.';
+    }
+
+    function formatTime(value) {
+      if (!value) return '—';
+      // SQLite CURRENT_TIMESTAMP ukládá UTC bez označení časového pásma.
+      const iso = value.includes('T') ? value : value.replace(' ', 'T') + 'Z';
+      const date = new Date(iso);
+      return Number.isNaN(date.getTime()) ? '—' : date.toLocaleTimeString('cs-CZ', { timeZone: 'Europe/Prague' });
+    }
+
+    async function loadList() {
+      if (loading) return;
+      loading = true;
+      try {
+        const res = await fetch('/api/list', { cache: 'no-store' });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Chyba při načítání');
+        document.getElementById('code').textContent = data.code || '----';
+        expiresAt = data.expiresAt;
+        hasSession = Boolean(data.code);
+        serverOffset = data.serverNow - Date.now();
+        updateCountdown();
         const tbody = document.getElementById('list');
-        tbody.innerHTML = '';
-        
-        if (data.students && Array.isArray(data.students)) {
-          data.students.forEach(row => {
-            const tr = document.createElement('tr');
-            const time = new Date(row.created_at).toLocaleTimeString('cs');
-            tr.innerHTML = `<td>${row.name}</td><td>${time}</td>`;
-            tbody.appendChild(tr);
+        tbody.replaceChildren();
+        data.students.forEach(row => {
+          const tr = document.createElement('tr');
+          [row.name, row.present ? 'Tu' : 'Není tu', formatTime(row.created_at)].forEach(value => {
+            const td = document.createElement('td');
+            td.textContent = value;
+            tr.appendChild(td);
           });
-        }
+          tbody.appendChild(tr);
+        });
+        document.getElementById('error').textContent = '';
       } catch (err) {
-        console.error(err);
+        document.getElementById('error').textContent = 'Seznam se nepodařilo aktualizovat. Zobrazené údaje mohou být zastaralé.';
+      } finally {
+        loading = false;
       }
     }
 
-    // Načti seznam + kód při otevření stránky
     loadList();
+    setInterval(loadList, 5000);
+    setInterval(updateCountdown, 1000);
   </script>
 </body>
 </html>
