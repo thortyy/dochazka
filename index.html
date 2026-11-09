@@ -39,7 +39,9 @@
 <body>
   <h1>Docházka</h1>
   
-  <input type="text" id="name" placeholder="Tvoje jméno" required>
+  <label for="name">Jméno a příjmení</label>
+  <input type="text" id="name" placeholder="Zadej své jméno a příjmení" autocomplete="name" aria-describedby="name-help" required>
+  <p id="name-help">Napiš celé jméno a příjmení, např. Josef Kuchař. Přihlášení je otevřené 10 minut od spuštění hodiny učitelem.</p>
   <input type="text" id="code" placeholder="Kód hodiny" required>
   <button id="btn" onclick="checkIn()">Jsem tady</button>
   
@@ -59,7 +61,7 @@
       const btn = document.getElementById('btn');
 
       if (!name || !code) {
-        message.textContent = 'Vyplň jméno i kód';
+        message.textContent = 'Vyplň jméno, příjmení a kód hodiny';
         message.style.color = 'red';
         return;
       }
