@@ -25,8 +25,8 @@
 
   <section class="card games-card">
     <details id="games-panel"><summary>Krátká pauza? Zahraj si.</summary>
-      <p class="muted">Dvě rychlé hry jen pro zábavu. Nejdřív nezapomeň zapsat docházku.</p>
-      <div class="game-tabs" role="group" aria-label="Výběr minihry"><button id="reaction-tab" type="button" aria-pressed="true">⚡ Postřeh</button><button id="memory-tab" type="button" aria-pressed="false">🧩 Pexeso</button></div>
+      <p class="muted">Čtyři rychlé hry jen pro zábavu. Nejdřív nezapomeň zapsat docházku.</p>
+      <div class="game-tabs" role="group" aria-label="Výběr minihry"><button id="reaction-tab" type="button" aria-pressed="true">⚡ Postřeh</button><button id="memory-tab" type="button" aria-pressed="false">🧩 Pexeso</button><button id="ttt-tab" type="button" aria-pressed="false">⭕ Piškvorky</button><button id="math-tab" type="button" aria-pressed="false">🔢 Počítání</button></div>
       <section id="reaction-game" aria-label="Postřeh">
         <p class="muted">Stiskni start. Počkej na zelenou a pak co nejrychleji klikni nebo stiskni mezerník na tlačítku.</p>
         <button id="reaction-target" class="reaction-target" type="button">Spustit postřeh</button>
@@ -37,6 +37,19 @@
         <div class="topbar"><p id="memory-score" class="muted" role="status"></p><button id="memory-reset" class="secondary" type="button">Nová hra</button></div>
         <div id="memory-board" class="memory-board"></div>
         <p id="memory-result" class="game-result" role="status"></p>
+      </section>
+      <section id="ttt-game" aria-label="Piškvorky" hidden>
+        <p class="muted">Hraješ za X, počítač za O. Spoj tři značky v řadě, sloupci nebo diagonálně.</p>
+        <p id="ttt-result" class="game-result" role="status">Jsi na tahu.</p>
+        <div id="ttt-board" class="ttt-board" role="group" aria-label="Hrací pole piškvorek"></div>
+        <button id="ttt-reset" class="secondary" type="button">Nové piškvorky</button>
+      </section>
+      <section id="math-game" aria-label="Počítání na čas" hidden>
+        <p class="muted">Kolik příkladů zvládneš za 30 sekund? Sčítání, odčítání a malá násobilka.</p>
+        <p id="math-score" class="math-game-score" role="status">Čas: 30 s · Body: 0</p>
+        <button id="math-start" type="button">Spustit počítání</button>
+        <div id="math-play" hidden><p id="math-question" class="math-question"></p><form id="math-form" class="math-form"><label for="math-answer" class="visually-hidden">Výsledek příkladu</label><input id="math-answer" type="number" inputmode="numeric" autocomplete="off" required><button type="submit">Odpovědět</button></form></div>
+        <p id="math-result" class="game-result" role="status"></p>
       </section>
     </details>
   </section>
