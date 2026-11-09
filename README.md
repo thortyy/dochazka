@@ -24,3 +24,9 @@ Node.js 24 nebo novější:
 ```sh
 node --test tests/auth.test.mjs
 ```
+
+## Přehled a minihry
+
+Učitelský přehled obsahuje počty přítomných a chybějících, ukazatel přítomnosti, vyhledávání bez diakritiky, filtry, kopírování kódu a export celé aktuální docházky do CSV (UTF-8 s BOM a středníkem pro Excel). Filtry nemění celkové počty ani export a zůstávají zachované při automatické aktualizaci.
+
+Na stránce žáků jsou dvě rozbalovací minihry: postřeh s lokálním rekordem a pexeso se šesti dvojicemi. Hry neodesílají výsledky na server, neovlivňují docházku a fungují i bez připojení k databázi.

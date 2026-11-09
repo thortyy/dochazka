@@ -7,9 +7,9 @@
   <link rel="stylesheet" href="/style.css">
 </head>
 <body>
-  <p class="eyebrow">Přehled třídy</p>
-  <h1>Docházka pod kontrolou.</h1>
-  <p>Přehled přítomnosti, který se aktualizuje za vás.</p>
+  <p class="eyebrow">Učitelský přehled</p>
+  <h1>Vaše třída. Na jednom místě.</h1>
+  <p>Kdo už dorazil a kdo ještě chybí? Přehled máte hned po ruce.</p>
   <section id="auth-panel" class="card">
     <h2 id="auth-title">Přihlášení</h2>
     <p id="auth-help" class="muted"></p>
@@ -25,24 +25,39 @@
   </section>
   <main id="dashboard" hidden>
   <div class="topbar"><span id="signed-in" class="muted"></span><button id="logout" class="secondary">Odhlásit se</button></div>
-  <section class="card">
-  
-  <button onclick="startSession()">Spustit novou hodinu</button>
-  
-  <div id="code">----</div>
-  <p id="countdown">Není spuštěná hodina.</p>
-  <p id="error" role="status" style="color: #b91c1c"></p>
-  
+  <div class="stats" aria-label="Souhrn docházky">
+    <div class="stat"><span>Celkem žáků</span><strong id="total-count">—</strong><small>Seznam třídy</small></div>
+    <div class="stat stat-green"><span>Přítomní</span><strong id="present-count">—</strong><small>Úspěšně přihlášení</small></div>
+    <div class="stat stat-rose"><span>Chybějící</span><strong id="absent-count">—</strong><small>Dosud bez zápisu</small></div>
+  </div>
+  <section class="card session-card">
+    <div class="session-info"><p class="eyebrow">Aktuální hodina</p><span class="muted">Kód pro přihlášení žáků</span>
+      <div id="code" aria-label="Kód aktuální hodiny">----</div>
+      <button id="copy-code" class="secondary" disabled>Kopírovat kód</button>
+      <span id="copy-status" class="muted" role="status"></span>
+    </div>
+    <div class="session-actions"><p id="countdown">Není spuštěná hodina.</p>
+      <button id="start-session" onclick="startSession()">Spustit novou hodinu</button>
+      <p class="muted">Nová hodina otevře přihlášení na 10 minut a začne nový seznam docházky.</p>
+    </div>
+    <p id="error" role="status"></p>
   </section>
+  <div class="attendance-progress"><div class="topbar"><span id="progress-label">Čekáme na načtení docházky</span><span id="last-updated" class="muted"></span></div>
+    <progress id="attendance-progress" value="0" max="100" aria-label="Podíl přítomných žáků"></progress>
+  </div>
   <section id="owner-tools" class="card" hidden>
-    <h2>Přístup pro učitele</h2>
+    <details><summary>Správa přístupu pro učitele</summary>
     <p class="muted">Vytvořte jednorázovou pozvánku platnou 24 hodin. Učitel si přes ni zvolí své jméno a heslo. Odkaz předejte pouze učiteli.</p>
     <button id="invite-button" class="secondary">Vytvořit pozvánku učitele</button>
     <input id="invite-url" aria-label="Odkaz pro učitele" readonly hidden>
     <p id="invite-message" role="status"></p>
+    </details>
   </section>
   <section class="card">
-  <div class="topbar"><h2>Všichni žáci</h2><span class="muted">Aktualizace každých 5 sekund</span></div>
+  <div class="topbar"><div><h2>Seznam žáků</h2><span class="muted">Podle příjmení · aktualizace každých 5 sekund</span></div><button id="export-csv" class="secondary" disabled>Stáhnout CSV</button></div>
+  <div class="list-toolbar"><div class="search-field"><label for="student-search">Najít žáka</label><input id="student-search" type="search" placeholder="Jméno nebo příjmení…" autocomplete="off"></div>
+    <div class="filters" role="group" aria-label="Filtrovat docházku"><button type="button" data-filter="all" aria-pressed="true">Všichni</button><button type="button" data-filter="present" aria-pressed="false">Tu</button><button type="button" data-filter="absent" aria-pressed="false">Není tu</button></div></div>
+  <p id="result-count" class="muted" role="status"></p>
   <div class="table-wrap">
   
   <table>
@@ -59,20 +74,72 @@
 
   <script>
     let signedIn = false;
+    let students = [];
+    let activeFilter = 'all';
+    const normalizeSearch = value => value.normalize('NFD').replace(/\p{M}/gu, '').toLocaleLowerCase('cs');
+    function renderStudents() {
+      const query = normalizeSearch(document.getElementById('student-search').value.trim());
+      const rows = students.filter(row => normalizeSearch(row.name).includes(query) && (activeFilter === 'all' || (activeFilter === 'present' ? row.present : !row.present)));
+      const tbody = document.getElementById('list');
+      tbody.replaceChildren();
+      rows.forEach(row => {
+        const tr = document.createElement('tr');
+        [row.name, row.present ? 'Tu' : 'Není tu', formatTime(row.created_at)].forEach((value, i) => {
+          const td = document.createElement('td');
+          if (i === 1) { const badge = document.createElement('span'); badge.className = row.present ? 'status-badge present' : 'status-badge absent'; badge.textContent = value; td.appendChild(badge); }
+          else td.textContent = value;
+          tr.appendChild(td);
+        });
+        tbody.appendChild(tr);
+      });
+      if (!rows.length) { const tr=document.createElement('tr'); const td=document.createElement('td'); td.colSpan=3; td.className='empty-state'; td.textContent='Žádný žák neodpovídá vybranému filtru.'; tr.appendChild(td); tbody.appendChild(tr); }
+      document.getElementById('result-count').textContent=`Zobrazeno ${rows.length} z ${students.length} žáků`;
+    }
+    function updateSummary() {
+      const present = students.filter(s => s.present).length;
+      document.getElementById('total-count').textContent=students.length;
+      document.getElementById('present-count').textContent=hasSession ? present : '—';
+      document.getElementById('absent-count').textContent=hasSession ? students.length-present : '—';
+      const percent=students.length ? Math.round(present/students.length*100) : 0;
+      document.getElementById('attendance-progress').value=percent;
+      document.getElementById('progress-label').textContent=hasSession ? `Přítomnost ${percent} % · ${present} z ${students.length} žáků` : 'Spusťte hodinu pro sledování přítomnosti.';
+      document.getElementById('export-csv').disabled=!hasSession;
+      document.getElementById('copy-code').disabled=!hasSession;
+      document.getElementById('last-updated').textContent='Aktualizováno '+new Date().toLocaleTimeString('cs-CZ');
+    }
+    document.getElementById('student-search').addEventListener('input',renderStudents);
+    document.querySelectorAll('[data-filter]').forEach(button => button.onclick=()=>{
+      activeFilter=button.dataset.filter;
+      document.querySelectorAll('[data-filter]').forEach(b=>b.setAttribute('aria-pressed',String(b===button)));
+      renderStudents();
+    });
+    document.getElementById('copy-code').onclick=async()=>{
+      try { await navigator.clipboard.writeText(document.getElementById('code').textContent); document.getElementById('copy-status').textContent='Zkopírováno'; }
+      catch {document.getElementById('copy-status').textContent='Označte a zkopírujte kód ručně.';}
+    };
+    document.getElementById('export-csv').onclick=()=>{
+      const cell = value => '"'+String(value).replace(/"/g,'""')+'"';
+      const rows=[['Příjmení a jméno','Stav','Čas příchodu'],...students.map(row=>[row.name,row.present?'Tu':'Není tu',formatTime(row.created_at)])];
+      const csv='\uFEFF'+rows.map(row=>row.map(cell).join(';')).join('\r\n');
+      const url=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8'}));
+      const link=document.createElement('a');link.href=url;link.download='dochazka-'+document.getElementById('code').textContent+'.csv';link.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
+    };
     async function startSession() {
+      const button=document.getElementById('start-session');button.disabled=true;
       try {
         const res = await fetch('/api/start', { method: 'POST' });
         const data = await res.json();
         if (res.status === 401) { await refreshAuth(); return; }
         if (data.code) {
           document.getElementById('code').textContent = data.code;
-          loadList();
+          document.getElementById('copy-status').textContent='';
+          await loadList();
         } else {
           alert(data.error || 'Chyba při generování kódu');
         }
       } catch (err) {
         alert('Chyba připojení');
-      }
+      } finally {button.disabled=false;}
     }
 
     let loading = false;
@@ -113,18 +180,9 @@
         hasSession = Boolean(data.code);
         serverOffset = data.serverNow - Date.now();
         updateCountdown();
-        const tbody = document.getElementById('list');
-        tbody.replaceChildren();
-        data.students.forEach(row => {
-          const tr = document.createElement('tr');
-          [row.name, row.present ? 'Tu' : 'Není tu', formatTime(row.created_at)].forEach(value => {
-            const td = document.createElement('td');
-            td.textContent = value;
-            tr.appendChild(td);
-          });
-          tr.children[1].className = row.present ? 'present' : 'absent';
-          tbody.appendChild(tr);
-        });
+        students = data.students;
+        updateSummary();
+        renderStudents();
         document.getElementById('error').textContent = '';
       } catch (err) {
         document.getElementById('error').textContent = 'Seznam se nepodařilo aktualizovat. Zobrazené údaje mohou být zastaralé.';
@@ -150,6 +208,7 @@
         signedIn=Boolean(data.user);
         document.getElementById('dashboard').hidden=!signedIn;
         document.getElementById('auth-panel').hidden=signedIn;
+        students=[];
         document.getElementById('list').replaceChildren();
         document.getElementById('code').textContent='----';
         document.getElementById('owner-tools').hidden=data.user?.role!=='owner';
