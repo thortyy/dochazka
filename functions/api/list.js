@@ -7,14 +7,17 @@ export async function onRequestGet(context) {
     ).first();
 
     if (!session) {
-      return Response.json([]);
+      return Response.json({ code: null, students: [] });
     }
 
     const { results } = await env.DB.prepare(
       'SELECT name, created_at FROM attendance WHERE code = ? ORDER BY created_at DESC'
     ).bind(session.code).all();
 
-    return Response.json(results);
+    return Response.json({
+      code: session.code,
+      students: results
+    });
   } catch (err) {
     return Response.json({ error: 'Chyba' }, { status: 500 });
   }
