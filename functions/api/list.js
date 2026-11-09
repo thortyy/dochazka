@@ -1,7 +1,11 @@
+import { requireAdmin } from '../_shared/auth.js';
 import { ensureWindows, json, roster, findStudent } from '../_shared/attendance.js';
 
-export async function onRequestGet({ env }) {
+export async function onRequestGet(context) {
+  const { env } = context;
   try {
+    const denied = await requireAdmin(context, false);
+    if (denied) return denied;
     await ensureWindows(env.DB);
     const session = await env.DB.prepare(`SELECT s.code, w.expires_at
       FROM sessions s LEFT JOIN attendance_windows w ON s.code = w.code

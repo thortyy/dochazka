@@ -4,48 +4,24 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Docházka</title>
-  <style>
-    body {
-      font-family: system-ui, sans-serif;
-      max-width: 400px;
-      margin: 40px auto;
-      padding: 20px;
-      text-align: center;
-    }
-    input, button {
-      width: 100%;
-      padding: 12px;
-      margin: 8px 0;
-      font-size: 16px;
-      box-sizing: border-box;
-    }
-    button {
-      background: #2563eb;
-      color: white;
-      border: none;
-      border-radius: 8px;
-      cursor: pointer;
-    }
-    button:disabled {
-      background: #9ca3af;
-      cursor: not-allowed;
-    }
-    #message {
-      margin-top: 16px;
-      font-weight: bold;
-    }
-  </style>
+  <link rel="stylesheet" href="/style.css">
+  <style>body{max-width:500px}#btn{width:100%}</style>
 </head>
 <body>
-  <h1>Docházka</h1>
+  <p class="eyebrow">Školní docházka</p>
+  <h1>Jsem tady.</h1>
+  <p>Zapiš svou přítomnost během pár sekund.</p>
+  <main class="card">
   
   <label for="name">Jméno a příjmení</label>
   <input type="text" id="name" placeholder="Zadej své jméno a příjmení" autocomplete="name" aria-describedby="name-help" required>
   <p id="name-help">Napiš celé jméno a příjmení, např. Josef Kuchař. Přihlášení je otevřené 10 minut od spuštění hodiny učitelem.</p>
+  <label for="code">Kód hodiny</label>
   <input type="text" id="code" placeholder="Kód hodiny" required>
   <button id="btn" onclick="checkIn()">Jsem tady</button>
   
-  <div id="message"></div>
+  <div id="message" role="status"></div>
+  </main>
 
   <script>
     // Zkontroluj, jestli už se z tohoto počítače na aktuální kód zapsal
