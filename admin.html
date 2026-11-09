@@ -38,6 +38,8 @@
     </div>
     <div class="session-actions"><p id="countdown">Není spuštěná hodina.</p>
       <button id="start-session" onclick="startSession()">Spustit novou hodinu</button>
+      <button id="extend-session" class="secondary" disabled>+5 minut na přihlášení</button>
+      <p id="extend-status" class="muted" role="status"></p>
       <p class="muted">Nová hodina otevře přihlášení na 10 minut a začne nový seznam docházky.</p>
     </div>
     <p id="error" role="status"></p>
@@ -74,6 +76,22 @@
 
   <script>
     let signedIn = false;
+    let extending = false;
+    document.getElementById('extend-session').onclick=async()=>{
+      if (extending) return;
+      const button=document.getElementById('extend-session');
+      extending=true;button.disabled=true;
+      try {
+        const res=await fetch('/api/extend',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({code:document.getElementById('code').textContent})});
+        const data=await res.json();
+        if (res.status===401) {await refreshAuth();return;}
+        if (!res.ok) throw new Error(data.error || 'Čas se nepodařilo prodloužit');
+        expiresAt=data.expiresAt;serverOffset=data.serverNow-Date.now();updateCountdown();
+        document.getElementById('extend-status').textContent='Čas na přihlášení byl prodloužen o 5 minut.';
+        await loadList();
+      } catch(err) {document.getElementById('extend-status').textContent=err.message;}
+      finally {extending=false;button.disabled=!hasSession;}
+    };
     let students = [];
     let activeFilter = 'all';
     const normalizeSearch = value => value.normalize('NFD').replace(/\p{M}/gu, '').toLocaleLowerCase('cs');
@@ -105,6 +123,7 @@
       document.getElementById('progress-label').textContent=hasSession ? `Přítomnost ${percent} % · ${present} z ${students.length} žáků` : 'Spusťte hodinu pro sledování přítomnosti.';
       document.getElementById('export-csv').disabled=!hasSession;
       document.getElementById('copy-code').disabled=!hasSession;
+      document.getElementById('extend-session').disabled=!hasSession || extending;
       document.getElementById('last-updated').textContent='Aktualizováno '+new Date().toLocaleTimeString('cs-CZ');
     }
     document.getElementById('student-search').addEventListener('input',renderStudents);
@@ -133,6 +152,7 @@
         if (data.code) {
           document.getElementById('code').textContent = data.code;
           document.getElementById('copy-status').textContent='';
+          document.getElementById('extend-status').textContent='';
           await loadList();
         } else {
           alert(data.error || 'Chyba při generování kódu');

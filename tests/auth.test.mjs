@@ -2,6 +2,7 @@
 import { DatabaseSync } from 'node:sqlite';
 import assert from 'node:assert/strict';
 import { onRequestGet as state, onRequestPost as auth } from '../functions/api/auth.js';
+import { onRequestPost as extend } from '../functions/api/extend.js';
 import { onRequestPost as start } from '../functions/api/start.js';
 import { onRequestGet as list } from '../functions/api/list.js';
 import { onRequestPost as checkin } from '../functions/api/checkin.js';
@@ -14,6 +15,7 @@ const ctx=(body,cookie='',origin='https://attendance.test')=>({env,request:new R
 const pass='test-password-12345';
 assert.equal((await list(ctx())).status,401);
 assert.equal((await start(ctx({}))).status,401);
+assert.equal((await extend(ctx({code:'NONE'}))).status,401);
 let s=await(await state(ctx())).json();assert.equal(s.needsSetup,true);
 assert.equal((await auth(ctx({action:'setup',username:'thortyy',password:pass,setupKey:'wrong'}))).status,403);
 assert.equal((await auth(ctx({action:'setup',username:'thortyy',password:pass,setupKey:env.ADMIN_SETUP_KEY},'','https://evil.test'))).status,403);
@@ -33,9 +35,19 @@ assert.equal((await auth(ctx({action:'accept',username:'other',password:pass,inv
 assert.equal((await auth(ctx({action:'invite'},teacher))).status,403);
 assert.equal((await start(ctx({},teacher,'https://evil.test'))).status,403);
 const started=await(await start(ctx({},teacher))).json();assert.ok(started.code);
+assert.equal((await extend(ctx({code:started.code},teacher,'https://evil.test'))).status,403);
+assert.equal((await extend(ctx({code:'OLD-CODE'},teacher))).status,409);
+const extended=await(await extend(ctx({code:started.code},teacher))).json();assert.equal(extended.expiresAt,started.expiresAt+300000);
+// Restore initial deadline for the existing attendance boundary test.
+sql.prepare('UPDATE attendance_windows SET expires_at=? WHERE code=?').run(started.expiresAt,started.code);
 assert.equal((await checkin(ctx({name:'Josef Kuchař',code:started.code}))).status,200);
 s=await(await list(ctx(null,teacher))).json();assert.equal(s.students.length,27);assert.equal(s.students.filter(s=>s.present).length,1);
 const originalNow=Date.now;Date.now=()=>started.expiresAt;assert.equal((await checkin(ctx({name:'Lukáš Srp',code:started.code}))).status,400);Date.now=originalNow;
+sql.prepare('UPDATE attendance_windows SET expires_at=? WHERE code=?').run(Date.now()-10000,started.code);
+const reopened=await(await extend(ctx({code:started.code},teacher))).json();assert.ok(Math.abs(reopened.expiresAt-Date.now()-300000)<1000);
+assert.equal((await checkin(ctx({name:'Lukáš Srp',code:started.code}))).status,200);
+const newer=await(await start(ctx({},teacher))).json();assert.ok(newer.code);
+assert.equal((await extend(ctx({code:started.code},teacher))).status,409);
 await auth(ctx({action:'logout'},teacher));assert.equal((await list(ctx(null,teacher))).status,401);
 const expiredCookie=login.headers.get('Set-Cookie').split(';')[0];sql.prepare('UPDATE admin_sessions SET expires_at=0').run();assert.equal((await list(ctx(null,expiredCookie))).status,401);
 for(let i=0;i<22;i++) await auth(ctx({action:'login',username:'thortyy',password:'invalid-password-long'}));
