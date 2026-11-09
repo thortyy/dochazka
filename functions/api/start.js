@@ -15,13 +15,15 @@ export async function onRequestPost(context) {
       if (!existing) { code = candidate; break; }
     }
     if (!code) return json({ error: 'Kód se nepodařilo vytvořit. Zkuste to znovu.' }, 500);
-    const expiresAt = Date.now() + 10 * 60 * 1000;
+    const startedAt = Date.now();
+    const expiresAt = startedAt + 10 * 60 * 1000;
     await env.DB.batch([
       env.DB.prepare('UPDATE sessions SET active = 0'),
       env.DB.prepare('INSERT INTO sessions (code, active) VALUES (?, 1)').bind(code),
-      env.DB.prepare('INSERT INTO attendance_windows (code, expires_at) VALUES (?, ?)').bind(code, expiresAt)
+      env.DB.prepare('INSERT INTO attendance_windows (code, expires_at) VALUES (?, ?)').bind(code, expiresAt),
+      env.DB.prepare('INSERT INTO attendance_session_starts (code, started_at) VALUES (?, ?)').bind(code, startedAt)
     ]);
-    return json({ code, expiresAt, serverNow: Date.now() });
+    return json({ code, expiresAt, startedAt, serverNow: Date.now() });
   } catch (err) {
     return json({ error: 'Chyba při spuštění hodiny' }, 500);
   }

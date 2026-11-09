@@ -49,7 +49,11 @@ export function mount(container, services) {
     draw();
   }
   const keys = {ArrowLeft: 'left', ArrowRight: 'right', ArrowUp: 'up', ArrowDown: 'down'};
-  grid.addEventListener('keydown', event => {if (event.altKey || event.ctrlKey || event.metaKey || !keys[event.key]) return; event.preventDefault(); move(keys[event.key]);}, options);
+  document.addEventListener('keydown', event => {
+    if(container.hidden || container.closest('[hidden]') || !container.closest('details')?.open || event.altKey || event.ctrlKey || event.metaKey || !keys[event.key])return;
+    if(document.activeElement?.closest('input,textarea,select,[contenteditable="true"]'))return;
+    event.preventDefault();move(keys[event.key]);
+  },options);
   grid.addEventListener('pointerdown', event => {if (!event.isPrimary || event.button !== 0) return; pointer = {id:event.pointerId,x:event.clientX,y:event.clientY}; grid.setPointerCapture(event.pointerId); grid.focus({preventScroll:true});}, options);
   grid.addEventListener('pointerup', event => {if (!pointer || pointer.id !== event.pointerId) return; const dx = event.clientX - pointer.x, dy = event.clientY - pointer.y; pointer = null; if (Math.max(Math.abs(dx), Math.abs(dy)) < 22) return; move(Math.abs(dx) > Math.abs(dy) ? dx > 0 ? 'right' : 'left' : dy > 0 ? 'down' : 'up');}, options);
   grid.addEventListener('pointercancel', () => {pointer = null;}, options);

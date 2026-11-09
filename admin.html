@@ -49,7 +49,7 @@
     <progress id="attendance-progress" value="0" max="100" aria-label="Podíl přítomných žáků"></progress>
   </div>
   <section class="card roster-card">
-  <div class="topbar roster-heading"><div><p class="eyebrow">Vaše třída</p><h2>Seznam žáků</h2><span class="muted">Podle příjmení · aktualizace každých 5 sekund</span></div><button id="export-csv" class="secondary" disabled>Stáhnout CSV</button></div>
+  <div class="topbar roster-heading"><div><p class="eyebrow">Vaše třída</p><h2>Seznam žáků</h2><span class="muted" id="refresh-rate">Podle příjmení · aktualizace každých 5 sekund</span></div><button id="export-csv" class="secondary" disabled>Stáhnout CSV</button></div>
   <div class="list-toolbar"><div class="search-field"><label for="student-search">Najít žáka</label><input id="student-search" type="search" placeholder="Jméno nebo příjmení…" autocomplete="off"></div>
     <div class="filters" role="group" aria-label="Filtrovat docházku"><button type="button" data-filter="all" aria-pressed="true">Všichni</button><button type="button" data-filter="present" aria-pressed="false">Tu</button><button type="button" data-filter="absent" aria-pressed="false">Není tu</button></div></div>
   <p id="result-count" class="muted" role="status"></p>
@@ -198,6 +198,15 @@
     let loading = false;
     let expiresAt = null;
     let serverOffset = 0;
+    let startedAt = null, refreshTimer = null;
+    function scheduleRefresh(){
+      clearTimeout(refreshTimer);
+      if(!signedIn)return;
+      const remaining=startedAt ? startedAt+300000-(Date.now()+serverOffset) : 0;
+      const fast=remaining>0;
+      document.getElementById('refresh-rate').textContent='Podle příjmení · aktualizace každé '+(fast?'2 sekundy':'5 sekund');
+      refreshTimer=setTimeout(loadList,fast?Math.min(2000,remaining):5000);
+    }
     let hasSession = false;
 
     function updateCountdown() {
@@ -230,6 +239,7 @@
         if (!res.ok) throw new Error(data.error || 'Chyba při načítání');
         document.getElementById('code').textContent = data.code || '----';
         expiresAt = data.expiresAt;
+        startedAt = data.startedAt ?? null;
         hasSession = Boolean(data.code);
         serverOffset = data.serverNow - Date.now();
         updateCountdown();
@@ -241,6 +251,7 @@
         document.getElementById('error').textContent = 'Seznam se nepodařilo aktualizovat. Zobrazené údaje mohou být zastaralé.';
       } finally {
         loading = false;
+        scheduleRefresh();
       }
     }
 
@@ -259,6 +270,7 @@
         const data=await res.json();
         if (!res.ok) throw new Error(data.error);
         signedIn=Boolean(data.user);
+        if(!signedIn)clearTimeout(refreshTimer);
         document.getElementById('dashboard').hidden=!signedIn;
         document.getElementById('auth-panel').hidden=signedIn;
         students=[];
@@ -334,7 +346,7 @@
     document.getElementById('network-add').onclick=()=>changeNetwork({action:'add_current',confirmSchool:document.getElementById('confirm-school').checked},document.getElementById('network-add'));
     document.getElementById('network-disable').onclick=()=>changeNetwork({action:'disable'},document.getElementById('network-disable'));
     refreshAuth();
-    setInterval(loadList, 5000);
+
     setInterval(updateCountdown, 1000);
   </script>
 </body>

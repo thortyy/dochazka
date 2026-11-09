@@ -23,6 +23,7 @@ export async function ensureWindows(db) {
   await db.prepare(`CREATE TABLE IF NOT EXISTS attendance_windows (
     code TEXT PRIMARY KEY, expires_at INTEGER NOT NULL
   )`).run();
+  await db.prepare('CREATE TABLE IF NOT EXISTS attendance_session_starts (code TEXT PRIMARY KEY, started_at INTEGER NOT NULL)').run();
 }
 
 export function json(data, status = 200) {

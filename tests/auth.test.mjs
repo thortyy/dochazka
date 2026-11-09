@@ -39,14 +39,14 @@ const teacher=accepted.headers.get('Set-Cookie').split(';')[0];assert.equal((awa
 assert.equal((await auth(ctx({action:'accept',username:'other',password:pass,invite:token}))).status,400);
 assert.equal((await auth(ctx({action:'invite'},teacher))).status,403);
 assert.equal((await start(ctx({},teacher,'https://evil.test'))).status,403);
-const started=await(await start(ctx({},teacher))).json();assert.match(started.code,/^[A-HJ-NP-Z2-9]{4}$/);
+const started=await(await start(ctx({},teacher))).json();assert.match(started.code,/^[A-HJ-NP-Z2-9]{4}$/);assert.ok(Math.abs(started.startedAt-Date.now())<1000);
 assert.equal((await extend(ctx({code:started.code},teacher,'https://evil.test'))).status,403);
 assert.equal((await extend(ctx({code:'OLD-CODE'},teacher))).status,409);
 const extended=await(await extend(ctx({code:started.code},teacher))).json();assert.equal(extended.expiresAt,started.expiresAt+300000);
 // Restore initial deadline for the existing attendance boundary test.
 sql.prepare('UPDATE attendance_windows SET expires_at=? WHERE code=?').run(started.expiresAt,started.code);
 assert.equal((await checkin(ctx({name:'Josef Kuchař',code:started.code}))).status,200);
-s=await(await list(ctx(null,teacher))).json();assert.equal(s.students.length,27);assert.equal(s.students.filter(s=>s.present).length,1);
+s=await(await list(ctx(null,teacher))).json();assert.equal(s.startedAt,started.startedAt);assert.equal(s.students.length,27);assert.equal(s.students.filter(s=>s.present).length,1);
 const originalNow=Date.now;Date.now=()=>started.expiresAt;assert.equal((await checkin(ctx({name:'Lukáš Srp',code:started.code}))).status,400);Date.now=originalNow;
 sql.prepare('UPDATE attendance_windows SET expires_at=? WHERE code=?').run(Date.now()-10000,started.code);
 const reopened=await(await extend(ctx({code:started.code},teacher))).json();assert.ok(Math.abs(reopened.expiresAt-Date.now()-300000)<1000);
