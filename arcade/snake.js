@@ -43,13 +43,13 @@ export function mount(container, services = {}) {
   root.innerHTML = `
     <div class="snake-heading"><div><span class="snake-kicker">ARCADE / 01</span><h3>Neon Had</h3><p>Další sousto. Delší had. Vyšší rekord.</p></div><span class="snake-chip">20 × 20</span></div>
     <div class="snake-metrics" aria-label="Skóre hry"><div><span>Skóre</span><strong data-snake-score>0</strong></div><div><span>Tvůj rekord</span><strong data-snake-best>0</strong></div><div><span>Úroveň</span><strong data-snake-level>1</strong></div></div>
-    <div class="snake-board" tabindex="0" role="group" aria-label="Herní pole hada. Ovládání šipkami nebo W A S D.">
+    <div class="snake-levelbar"><div><strong data-level-name>01 / Rozjezd</strong><span data-level-goal>Ještě 5 soust do další úrovně</span></div><progress data-level-progress value="0" max="5" aria-label="Postup úrovní"></progress></div><div class="snake-board" tabindex="0" role="group" aria-label="Herní pole hada. Ovládání šipkami nebo W A S D.">
       <canvas width="400" height="400" aria-label="Had a svítící sousto na herní ploše">Tvůj prohlížeč nepodporuje canvas. Zkus jiný prohlížeč.</canvas>
       <div class="snake-overlay"><span class="snake-overlay-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><path d="M5 17h5v-5h5V6m-4 0h4v4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></span><h4 data-snake-title>První sousto čeká.</h4><p data-snake-description>Posbírej světelné body. Okrajem projedeš na druhou stranu. Pozor na vlastní ocas.</p><button class="snake-start" type="button">Spustit hru</button><span class="snake-overlay-hint">Šipky / WASD / tlačítka pod hrou</span></div>
     </div>
     <div class="snake-actions"><button class="snake-pause" type="button" disabled>Pozastavit</button><button class="snake-reset" type="button">Nová hra</button></div>
     <div class="snake-controls" role="group" aria-label="Směr hada"><button type="button" data-snake-dir="up" aria-label="Nahoru">↑</button><button type="button" data-snake-dir="left" aria-label="Doleva">←</button><button type="button" data-snake-dir="down" aria-label="Dolů">↓</button><button type="button" data-snake-dir="right" aria-label="Doprava">→</button></div>
-    <p class="snake-help">Každé sousto přidá 10 bodů. Had zrychluje a okraje tě pustí na druhou stranu. Pozor na vlastní ocas.</p><p class="snake-announcement" role="status" aria-live="polite"></p>`;
+    <p class="snake-help">Běžné sousto: 10 bodů, zlaté: 30. Každých 5 soust nová úroveň a barva. Had zrychluje a okraje tě pustí na druhou stranu. Pozor na vlastní ocas.</p><p class="snake-announcement" role="status" aria-live="polite"></p>`;
   container.appendChild(root);
   const get = selector => root.querySelector(selector);
   const canvas = get('canvas');
@@ -62,6 +62,10 @@ export function mount(container, services = {}) {
   let state = createSnakeState();
   let mode = 'ready';
   let timer = null;
+  let frame = 0, stepAt = 0, eaten = 0, previousSnake = null, flashUntil = 0;
+  const levelNames = ["Rozjezd", "V rytmu", "Neonový sprint", "Hyperprostor", "Lovec rekordů", "Nekonečno"];
+  const palettes = [["#b6ffda","#54c9a6"],["#b9efff","#58b6e1"],["#d7baff","#9c78de"],["#ffd6a3","#eaa35e"],["#ffbdd7","#de789f"],["#edffad","#aacb57"]];
+  const duration = () => Math.max(65, 145 - Math.floor(eaten / 5) * 13);
   let pendingDirection = null;
   let destroyed = false;
   let best = 0;
@@ -81,7 +85,7 @@ export function mount(container, services = {}) {
     context.closePath();
     context.fill();
   }
-  function render() {
+  function render(progress = 1) {
     if (!context || destroyed) return;
     context.fillStyle = '#091a23';
     context.fillRect(0, 0, 400, 400);
@@ -95,19 +99,28 @@ export function mount(container, services = {}) {
     context.stroke();
     if (state.food) {
       const x = state.food.x * 20 + 10, y = state.food.y * 20 + 10;
-      context.fillStyle = '#ffaf8e'; context.beginPath(); context.arc(x, y, 5.5, 0, Math.PI * 2); context.fill();
+      const golden = (eaten + 1) % 4 === 0;
+      context.fillStyle = golden ? '#ffe29b' : '#ffaf8e'; context.beginPath(); context.arc(x, y, 5.5, 0, Math.PI * 2); context.fill();
       context.strokeStyle = '#73514a'; context.lineWidth = 1; context.beginPath(); context.arc(x, y, 8.5, 0, Math.PI * 2); context.stroke();
     }
-    [...state.snake].reverse().forEach((point, reverseIndex) => {
+    const positions = state.snake.map((point,index) => {
+      const old = previousSnake?.[index] || previousSnake?.[previousSnake.length - 1] || point;
+      let dx=point.x-old.x,dy=point.y-old.y;if(dx>10)dx-=20;if(dx< -10)dx+=20;if(dy>10)dy-=20;if(dy< -10)dy+=20;
+      return {x:(old.x+dx*progress+20)%20,y:(old.y+dy*progress+20)%20};
+    });
+    const palette=palettes[Math.min(5,Math.floor(eaten/5))];
+    positions.slice().reverse().forEach((point, reverseIndex) => {
       const index = state.snake.length - 1 - reverseIndex;
-      context.fillStyle = index === 0 ? '#b6ffda' : index % 2 ? '#54c9a6' : '#69d9b5';
+      context.fillStyle = index === 0 ? palette[0] : palette[1];
       roundedRect(point.x * 20 + 1.5, point.y * 20 + 1.5, 17, 17, index === 0 ? 5 : 4);
     });
-    const head = state.snake[0];
+    const head = positions[0];
     const [dx, dy] = VECTORS[state.direction];
     context.fillStyle = '#133d33';
     const eyes = dx ? [[head.x * 20 + 10 + dx * 4, head.y * 20 + 6], [head.x * 20 + 10 + dx * 4, head.y * 20 + 14]] : [[head.x * 20 + 6, head.y * 20 + 10 + dy * 4], [head.x * 20 + 14, head.y * 20 + 10 + dy * 4]];
     eyes.forEach(([x, y]) => { context.beginPath(); context.arc(x, y, 1.6, 0, Math.PI * 2); context.fill(); });
+    if(performance.now()<flashUntil){context.strokeStyle=palette[0];context.lineWidth=3;context.strokeRect(2,2,396,396);}
+
   }
   function updateMetrics() {
     if (state.score > best) {
@@ -116,7 +129,13 @@ export function mount(container, services = {}) {
     }
     get('[data-snake-score]').textContent = String(state.score);
     get('[data-snake-best]').textContent = String(best);
-    get('[data-snake-level]').textContent = String(1 + Math.floor(state.score / 50));
+    get('[data-snake-level]').textContent = String(1 + Math.floor(eaten / 5));
+  }
+  function updateLevel(){
+    const level=Math.floor(eaten/5);
+    get('[data-level-name]').textContent=String(level+1).padStart(2,'0')+' / '+levelNames[Math.min(5,level)];
+    get('[data-level-goal]').textContent=(eaten+1)%4===0?'Zlaté sousto: 30 bodů!':`Do další úrovně: ${5-eaten%5} soust · každé čtvrté je zlaté`;
+    get('[data-level-progress]').value=eaten%5;
   }
   function showOverlay(title, description, buttonText) {
     get('[data-snake-title]').textContent = title;
@@ -125,7 +144,7 @@ export function mount(container, services = {}) {
     overlay.hidden = false;
   }
   function finish() {
-    clearTimeout(timer); timer = null; mode = 'over';
+    clearTimeout(timer); cancelAnimationFrame(frame); timer = null; mode = 'over';
     pauseButton.disabled = true;
     const title = state.won ? 'Celá plocha je tvoje!' : 'Ještě jedno kolo?';
     showOverlay(title, `Skóre ${state.score} bodů. ${state.score > 0 && state.score === best ? 'Tvůj nejlepší výkon na tomto zařízení!' : 'Každé další kolo je nová šance.'}`, 'Hrát znovu');
@@ -133,28 +152,33 @@ export function mount(container, services = {}) {
     startButton.focus({ preventScroll: true });
   }
   function schedule() {
-    clearTimeout(timer);
-    if (mode !== 'running' || destroyed) return;
-    timer = setTimeout(() => {
-      timer = null;
-      if (mode !== 'running' || destroyed) return;
-      state = advanceSnake(state, pendingDirection || state.direction);
-      pendingDirection = null;
-      updateMetrics(); render();
-      if (state.over || state.won) finish(); else schedule();
-    }, Math.max(65, 125 - Math.floor(state.score / 10) * 4));
+    cancelAnimationFrame(frame);stepAt=performance.now();
+    function tick(now){
+      if(mode!=='running'||destroyed)return;
+      const interval=duration();
+      if(now-stepAt>=interval){
+        previousSnake=state.snake.map(point=>({...point}));
+        const oldLength=state.snake.length;
+        state=advanceSnake(state,pendingDirection||state.direction);pendingDirection=null;stepAt=now;
+        if(state.snake.length>oldLength){eaten++;if(eaten%4===0)state.score+=20;flashUntil=now+220;updateLevel();}
+        updateMetrics();
+        if(state.over||state.won){render();finish();return;}
+      }
+      render(Math.min(1,(now-stepAt)/interval));frame=requestAnimationFrame(tick);
+    }
+    frame=requestAnimationFrame(tick);
   }
   function pause() {
     if (destroyed || mode !== 'running') return;
-    mode = 'paused'; clearTimeout(timer); timer = null; pendingDirection = null;
+    mode = 'paused'; cancelAnimationFrame(frame); render(); clearTimeout(timer); timer = null; pendingDirection = null;
     pauseButton.textContent = 'Pokračovat';
     showOverlay('Malá pauza.', 'Had nikam neuteče. Pokračuj, až budeš připravený.', 'Pokračovat');
     announcement.textContent = 'Hra je pozastavená.';
   }
   function run(reset = false) {
     if (destroyed || !context) return;
-    if (reset || mode !== 'paused') state = createSnakeState();
-    pendingDirection = null; mode = 'running';
+    if (reset || mode !== 'paused') {state = createSnakeState();eaten=0;previousSnake=null;updateLevel();}
+    previousSnake=null;pendingDirection = null; mode = 'running';
     pauseButton.disabled = false; pauseButton.textContent = 'Pozastavit';
     board.focus({ preventScroll: true });
     overlay.hidden = true;
@@ -178,7 +202,7 @@ export function mount(container, services = {}) {
   root.addEventListener('focusout', event => { if (!root.contains(event.relatedTarget)) pause(); }, { signal });
   window.addEventListener('blur', pause, { signal });
   document.addEventListener('visibilitychange', () => { if (document.hidden) pause(); }, { signal });
-  updateMetrics(); render();
+  updateLevel();updateMetrics(); render();
   if (!context) {
     showOverlay('Herní plocha není dostupná.', 'Zkus jiný prohlížeč, který podporuje canvas.', 'Hra není dostupná');
     startButton.disabled = true; get('.snake-reset').disabled = true;
@@ -187,7 +211,7 @@ export function mount(container, services = {}) {
     pause,
     destroy() {
       if (destroyed) return;
-      destroyed = true; clearTimeout(timer); timer = null; abort.abort(); root.remove();
+      destroyed = true; cancelAnimationFrame(frame); clearTimeout(timer); timer = null; abort.abort(); root.remove();
     }
   };
 }
