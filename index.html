@@ -26,8 +26,9 @@
       border-radius: 8px;
       cursor: pointer;
     }
-    button:hover {
-      background: #1d4ed8;
+    button:disabled {
+      background: #9ca3af;
+      cursor: not-allowed;
     }
     #message {
       margin-top: 16px;
@@ -40,19 +41,33 @@
   
   <input type="text" id="name" placeholder="Tvoje jméno" required>
   <input type="text" id="code" placeholder="Kód hodiny" required>
-  <button onclick="checkIn()">Jsem tady</button>
+  <button id="btn" onclick="checkIn()">Jsem tady</button>
   
   <div id="message"></div>
 
   <script>
+    // Zkontroluj, jestli už se z tohoto počítače na aktuální kód zapsal
+    function alreadyCheckedIn(code) {
+      const saved = localStorage.getItem('dochazka_code');
+      return saved === code.toUpperCase();
+    }
+
     async function checkIn() {
       const name = document.getElementById('name').value.trim();
       const code = document.getElementById('code').value.trim().toUpperCase();
       const message = document.getElementById('message');
+      const btn = document.getElementById('btn');
 
       if (!name || !code) {
         message.textContent = 'Vyplň jméno i kód';
         message.style.color = 'red';
+        return;
+      }
+
+      if (alreadyCheckedIn(code)) {
+        message.textContent = 'Z tohoto počítače už jsi zapsán';
+        message.style.color = 'orange';
+        btn.disabled = true;
         return;
       }
 
@@ -66,10 +81,12 @@
         const data = await res.json();
 
         if (res.ok) {
+          // Ulož, že z tohoto počítače už byl tento kód použit
+          localStorage.setItem('dochazka_code', code);
+          
           message.textContent = 'Úspěšně zapsáno!';
           message.style.color = 'green';
-          document.getElementById('name').value = '';
-          document.getElementById('code').value = '';
+          btn.disabled = true;
         } else {
           message.textContent = data.error || 'Chyba';
           message.style.color = 'red';
