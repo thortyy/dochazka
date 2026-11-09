@@ -32,37 +32,28 @@
   </div>
 
   <section class="card games-card">
-    <details id="games-panel"><summary><span class="games-summary-title"><span class="games-symbol" aria-hidden="true">✳</span><span>Krátká pauza? Zahraj si.</span></span><span class="games-count">4 minihry</span></summary>
-      <p class="muted">Čtyři rychlé hry jen pro zábavu. Nejdřív nezapomeň zapsat docházku.</p>
-      <div class="game-tabs" role="group" aria-label="Výběr minihry"><button id="reaction-tab" type="button" aria-pressed="true">⚡ Postřeh</button><button id="memory-tab" type="button" aria-pressed="false">🧩 Pexeso</button><button id="ttt-tab" type="button" aria-pressed="false">⭕ Piškvorky</button><button id="math-tab" type="button" aria-pressed="false">🔢 Počítání</button></div>
-      <section id="reaction-game" aria-label="Postřeh">
-        <p class="muted">Stiskni start. Počkej na zelenou a pak co nejrychleji klikni nebo stiskni mezerník na tlačítku.</p>
-        <button id="reaction-target" class="reaction-target" type="button">Spustit postřeh</button>
-        <p id="reaction-result" class="game-result" role="status">Jak rychlý máš postřeh?</p><p id="reaction-best" class="muted"></p>
-      </section>
-      <section id="memory-game" aria-label="Pexeso" hidden>
-        <p class="muted">Najdi všech 6 dvojic. Zkus co nejméně tahů.</p>
-        <div class="topbar"><p id="memory-score" class="muted" role="status"></p><button id="memory-reset" class="secondary" type="button">Nová hra</button></div>
-        <div id="memory-board" class="memory-board"></div>
-        <p id="memory-result" class="game-result" role="status"></p>
-      </section>
-      <section id="ttt-game" aria-label="Piškvorky" hidden>
-        <p class="muted">Hraješ za X, počítač za O. Spoj tři značky v řadě, sloupci nebo diagonálně.</p>
-        <p id="ttt-result" class="game-result" role="status">Jsi na tahu.</p>
-        <div id="ttt-board" class="ttt-board" role="group" aria-label="Hrací pole piškvorek"></div>
-        <button id="ttt-reset" class="secondary" type="button">Nové piškvorky</button>
-      </section>
-      <section id="math-game" aria-label="Počítání na čas" hidden>
-        <p class="muted">Kolik příkladů zvládneš za 30 sekund? Sčítání, odčítání a malá násobilka.</p>
-        <p id="math-score" class="math-game-score" role="status">Čas: 30 s · Body: 0</p>
-        <button id="math-start" type="button">Spustit počítání</button>
-        <div id="math-play" hidden><p id="math-question" class="math-question"></p><form id="math-form" class="math-form"><label for="math-answer" class="visually-hidden">Výsledek příkladu</label><input id="math-answer" type="number" inputmode="numeric" autocomplete="off" required><button type="submit">Odpovědět</button></form></div>
-        <p id="math-result" class="game-result" role="status"></p>
-      </section>
+    <details id="games-panel"><summary><span class="games-summary-title"><span class="games-symbol" aria-hidden="true">✳</span><span>Krátká pauza? Zahraj si.</span></span><span class="games-count">4 hry</span></summary>
+      <p class="muted">Nejdřív docházka. Potom tvůj další rekord.</p>
+      <p id="arcade-status" class="muted" role="status" hidden></p>
+      <button id="arcade-retry" class="secondary" type="button" hidden>Zkusit načíst hry znovu</button>
+      <div id="arcade-root"></div>
     </details>
   </section>
+  <script>
+    (() => {
+      const panel=document.getElementById('games-panel'), status=document.getElementById('arcade-status'), retry=document.getElementById('arcade-retry');
+      let loaded=false, loading=false;
+      async function openArcade(){
+        if(loaded||loading)return;
+        loading=true;status.hidden=false;status.textContent='Připravuji herní pauzu…';retry.hidden=true;
+        try {const module=await import('/games.js');await module.initArcade(document.getElementById('arcade-root'),panel);loaded=true;status.hidden=true;}
+        catch {status.textContent='Hry se nepodařilo načíst. Zápis docházky funguje dál.';retry.hidden=false;}
+        finally {loading=false;}
+      }
+      panel.addEventListener('toggle',()=>{if(panel.open)openArcade();});retry.addEventListener('click',openArcade);
+    })();
+  </script>
   <footer class="site-footer"><span>docházka<span class="brand-dot">.</span></span><span>Každý příchod se počítá.</span></footer>
-  <script src="/games.js" defer></script>
   <script>
     // Zkontroluj, jestli už se z tohoto počítače na aktuální kód zapsal
     function alreadyCheckedIn(code) {

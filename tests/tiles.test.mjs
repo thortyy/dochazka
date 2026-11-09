@@ -1,0 +1,16 @@
+import assert from 'node:assert/strict';
+import {slideBoard,spawnTile,gameOver} from '../arcade/tiles.js';
+const row=(values)=>[...values,...Array(12).fill(0)];
+const board=row([2,2,2,2]);const saved=[...board];
+assert.deepEqual(slideBoard(board,'left').board.slice(0,4),[4,4,0,0]);assert.deepEqual(board,saved);assert.equal(slideBoard(board,'left').score,8);
+assert.deepEqual(slideBoard(row([2,2,4,0]),'left').board.slice(0,4),[4,4,0,0]);
+assert.deepEqual(slideBoard(row([2,2,4,0]),'right').board.slice(0,4),[0,0,4,4]);
+const vertical=Array(16).fill(0);vertical[0]=2;vertical[4]=2;
+assert.equal(slideBoard(vertical,'up').board[0],4);assert.equal(slideBoard(vertical,'down').board[12],4);
+assert.equal(slideBoard(row([2,4,8,16]),'left').changed,false);
+assert.equal(spawnTile(Array(16).fill(0),()=>0)[0],2);
+assert.equal(spawnTile(Array(16).fill(0),()=>.99)[15],4);
+assert.deepEqual(spawnTile(Array(16).fill(2)),Array(16).fill(2));
+assert.equal(gameOver([2,4,2,4,4,2,4,2,2,4,2,4,4,2,4,2]),true);
+assert.equal(gameOver(Array(16).fill(2)),false);assert.equal(gameOver(Array(16).fill(0)),false);
+console.log('PASS 2048: merge once, scoring, four directions, immutability, spawn and game-over.');
