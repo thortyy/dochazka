@@ -29,4 +29,14 @@ node --test tests/auth.test.mjs
 
 Učitelský přehled obsahuje počty přítomných a chybějících, ukazatel přítomnosti, vyhledávání bez diakritiky, filtry, kopírování kódu a export celé aktuální docházky do CSV (UTF-8 s BOM a středníkem pro Excel). Filtry nemění celkové počty ani export a zůstávají zachované při automatické aktualizaci.
 
-Na stránce žáků jsou dvě rozbalovací minihry: postřeh s lokálním rekordem a pexeso se šesti dvojicemi. Hry neodesílají výsledky na server, neovlivňují docházku a fungují i bez připojení k databázi.
+Na stránce žáků jsou čtyři rozbalovací minihry: postřeh s lokálním rekordem, pexeso se šesti dvojicemi, piškvorky proti počítači a počítání na 30 sekund. Hry neodesílají výsledky na server, neovlivňují docházku a fungují i bez připojení k databázi.
+
+## Školní síť a ruční opravy
+
+Omezení školní sítě je ve výchozím stavu vypnuté. Učitel nebo správce v administraci rozbalí **Školní síť**, potvrdí připojení ke škole a klikne na **Povolit tuto síť a zapnout omezení**. Veřejnou adresu určuje Cloudflare (`CF-Connecting-IP`); hodnoty `X-Forwarded-For` se pro povolení nepoužívají. Další školní IP lze přidat stejným způsobem z dané přípojky. IPv6 se porovnává jako konkrétní normalizovaná adresa, nikoli prefix; některé sítě mohou vyžadovat povolení více adres. Mobily sdílející povolenou veřejnou IP mají také přístup.
+
+Omezení platí jen pro `/api/checkin`. Přihlášení a celá administrace včetně ručních oprav jsou dostupné i z domova. Odebrání poslední adresy při zapnutém omezení zablokuje všechny žákovské zápisy; omezení může učitel z administrace kdykoliv vypnout.
+
+Kliknutím na stav žáka v přehledu učitel změní přítomnost i po vypršení limitu zápisu. Změna se zapíše do `attendance_edits` s účtem učitele/správce a časem v UTC. Opravy se vztahují na aktuální hodinu; původní kód a záznamy ostatních žáků zůstanou zachované. Žákovský zápis v otevřeném limitu může znovu označit ručně odebraného žáka jako přítomného.
+
+Seznam je po 10 žácích; lze přepnout na celou třídu. Hledání, filtry, počty a export pracují s celou třídou, nejen s právě zobrazenou stránkou.

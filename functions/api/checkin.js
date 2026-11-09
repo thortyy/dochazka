@@ -1,3 +1,4 @@
+import { networkGate } from '../_shared/network.js';
 import { ensureWindows, json, findStudent } from '../_shared/attendance.js';
 
 export async function onRequestPost({ request, env }) {
@@ -11,6 +12,8 @@ export async function onRequestPost({ request, env }) {
   const code = body.code.trim().toUpperCase();
   if (!name) return json({ error: 'Zadej své celé jméno a příjmení podle seznamu třídy' }, 400);
   try {
+    const denied=await networkGate({request,env});
+    if(denied)return denied;
     await ensureWindows(env.DB);
     const session = await env.DB.prepare(`SELECT s.code, w.expires_at
       FROM sessions s LEFT JOIN attendance_windows w ON s.code = w.code
