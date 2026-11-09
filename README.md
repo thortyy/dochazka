@@ -29,7 +29,7 @@ node --test tests/auth.test.mjs
 
 Učitelský přehled obsahuje počty přítomných a chybějících, ukazatel přítomnosti, vyhledávání bez diakritiky, filtry, kopírování kódu a export celé aktuální docházky do CSV (UTF-8 s BOM a středníkem pro Excel). Filtry nemění celkové počty ani export a zůstávají zachované při automatické aktualizaci.
 
-Na stránce žáků jsou čtyři rozbalovací minihry: postřeh s lokálním rekordem, pexeso se šesti dvojicemi, piškvorky proti počítači a počítání na 30 sekund. Hry neodesílají výsledky na server, neovlivňují docházku a fungují i bez připojení k databázi.
+Na stránce žáků je rozbalovací herní sekce: Postřeh, Neon Had, Neon Breaker a 2048. Původní pexeso, piškvorky a počítání byly odstraněny. Hry neodesílají výsledky na server, neovlivňují docházku a fungují i bez připojení k databázi.
 
 ## Školní síť a ruční opravy
 
@@ -40,3 +40,16 @@ Omezení platí jen pro `/api/checkin`. Přihlášení a celá administrace vče
 Kliknutím na stav žáka v přehledu učitel změní přítomnost i po vypršení limitu zápisu. Změna se zapíše do `attendance_edits` s účtem učitele/správce a časem v UTC. Opravy se vztahují na aktuální hodinu; původní kód a záznamy ostatních žáků zůstanou zachované. Žákovský zápis v otevřeném limitu může znovu označit ručně odebraného žáka jako přítomného.
 
 Seznam je po 10 žácích; lze přepnout na celou třídu. Hledání, filtry, počty a export pracují s celou třídou, nejen s právě zobrazenou stránkou.
+
+## Nová herní sekce
+
+Herní nabídka ani jednotlivé hry se při běžném načtení docházky nestahují. Otevření sekce načte hosta `games.js` a společný styl; další moduly a styly se stahují až při výběru hry. Hry během přepínání zachovávají stav. Akční hry se při odchodu ze záložky, zavření sekce nebo opuštění herní plochy pozastaví. Pokračování je vždy vědomé. Jen Breaker při skutečné hře používá requestAnimationFrame; při pauze je zastavený.
+
+- Postřeh zachovává původní reakční pravidla i klíč rekordu, nově ukazuje poslední pokusy a jejich průměr.
+- Neon Had: klávesnice a dotykový D-pad, růst a postupné zrychlování.
+- Neon Breaker: tři životy a tři kola, klávesnice, myš nebo dotyk.
+- 2048: šipky, tlačítka nebo swipe, vrácení posledního tahu.
+
+Rekordy se ukládají pouze v daném prohlížeči, žádné herní výsledky se neodesílají na server. Všechny hry podporují světlé i tmavé prostředí. Před výměnou her byla uložená větev `backup/pred-novymi-hrami-2026-11-09`.
+
+Čisté testy her bez externích závislostí: `node --test tests/tiles.test.mjs tests/snake.test.mjs tests/breaker.test.mjs`.

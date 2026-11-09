@@ -1,106 +1,67 @@
-(() => {
-  const get = id => document.getElementById(id);
-  const target = get('reaction-target');
-  let state = 'idle', timer = null, readyAt = 0, best = null;
-  try { const saved = Number(localStorage.getItem('dochazka_reaction_best')); if (Number.isFinite(saved) && saved > 0) best = saved; } catch {}
-  const showBest = () => { get('reaction-best').textContent = best ? `Tvůj rekord na tomto zařízení: ${best} ms` : 'Rekord se ukládá jen v tomto prohlížeči.'; };
-  showBest();
-  function cancelReaction() {
-    clearTimeout(timer); state = 'idle'; target.className = 'reaction-target'; target.textContent = 'Spustit postřeh';
+// Imported only when the student opens the arcade. Game code and styles load on demand.
+const styles = new Map();
+function loadStyle(href) {
+  if (styles.has(href)) return styles.get(href);
+  const promise = new Promise((resolve, reject) => {
+    const link = document.createElement('link');link.rel = 'stylesheet';link.href = href;
+    link.onload = () => resolve();link.onerror = () => {styles.delete(href);link.remove();reject(new Error('Styl hry se nepodařilo načíst.'));};document.head.appendChild(link);
+  });styles.set(href,promise);return promise;
+}
+const games = {
+  reaction: {name:'Postřeh',category:'Rychlost',copy:'Zelená znamená teď. Překonej sám sebe.',icon:'↯',hue:'mint',meta:'Kliknutí · dotyk · mezerník',module:'/arcade/reaction.js'},
+  snake: {name:'Neon Had',category:'Obratnost',copy:'Sbírej energii. Neztrať se ve vlastní stopě.',icon:'⌁',hue:'lime',meta:'Šipky · WASD · dotyk',module:'/arcade/snake.js',css:'/arcade/snake.css'},
+  breaker: {name:'Neon Breaker',category:'Arkádovka',copy:'Tři životy. Tři kola. Rozbij celou stěnu.',icon:'▦',hue:'violet',meta:'Šipky · myš · dotyk',module:'/arcade/breaker.js',css:'/arcade/breaker.css'},
+  tiles: {name:'2048',category:'Logika',copy:'Malá čísla. Velké kombinace. Najdi svůj tah.',icon:'²',hue:'amber',meta:'Šipky · přejetí prstem',module:'/arcade/tiles.js',css:'/arcade/tiles.css'}
+};
+export async function initArcade(root, details) {
+  await loadStyle('/arcade/hub.css');
+  root.innerHTML = `<div class="arcade"><header class="arc-header"><div><p class="arc-eyebrow">Malá pauza. Velká výzva.</p><h2>Vyber si svůj další rekord<span>.</span></h2><p>Čtyři hry. Jen ty, tvoje soustředění a další pokus.</p></div><span class="arc-local">Rekordy na tomto zařízení</span></header><div class="arc-layout"><nav class="arc-catalog" aria-label="Vybrat hru"></nav><section class="arc-arena"><header class="arc-stage-header"><div><span class="arc-category"></span><h3 class="arc-game-title"></h3></div><span class="arc-controls"></span></header><p class="arc-loading" role="status" hidden></p><div class="arc-stages"></div></section></div><footer class="arc-footer"><span>Rozpracované hry zůstávají při přepnutí zachované.</span><span>Zápis docházky je vždy nahoře ↑</span></footer></div>`;
+  const query = selector => root.querySelector(selector), controller = new AbortController(), instances = new Map(), loaded = new Map(), bestCache = new Map();
+  let selected = null, selection = 0, destroyed = false;
+  const storeKey = key => key === 'reaction' ? 'dochazka_reaction_best' : 'dochazka_arcade_' + key + '_best';
+  function getBest(key) {
+    if(bestCache.has(key))return bestCache.get(key);
+    let value = 0;try {const saved=Number(localStorage.getItem(storeKey(key)));if(Number.isFinite(saved)&&saved>0)value=Math.round(saved);}catch{}
+    bestCache.set(key,value);return value;
   }
-  target.onclick = () => {
-    if (state === 'waiting') { cancelReaction(); get('reaction-result').textContent = 'Moc brzy! Počkej na zelenou a zkus to znovu.'; return; }
-    if (state === 'ready') {
-      const elapsed = Math.max(1, Math.round(performance.now() - readyAt));
-      const record = best === null || elapsed < best;
-      if (record) { best = elapsed; try { localStorage.setItem('dochazka_reaction_best', String(best)); } catch {} }
-      cancelReaction(); get('reaction-result').textContent = `${elapsed} ms${record ? ' · Nový osobní rekord!' : ' · Zkus překonat svůj rekord.'}`; showBest(); return;
-    }
-    state = 'waiting'; target.className = 'reaction-target waiting'; target.textContent = 'Počkej na zelenou…'; get('reaction-result').textContent = 'Připrav se.';
-    timer = setTimeout(() => { state = 'ready'; readyAt = performance.now(); target.className = 'reaction-target ready'; target.textContent = 'TEĎ!'; }, 1200 + Math.random() * 2200);
-  };
-  let cards = [], first = null, locked = false, moves = 0, pairs = 0, flipTimer = null;
-  function resetMemory() {
-    clearTimeout(flipTimer); first = null; locked = false; moves = 0; pairs = 0;
-    const symbols = ['🚀', '🎧', '⚡', '🌍', '🎮', '⭐'];
-    const deck = [...symbols, ...symbols];
-    for (let i = deck.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [deck[i], deck[j]] = [deck[j], deck[i]]; }
-    get('memory-board').replaceChildren();
-    cards = deck.map((symbol, i) => {
-      const button = document.createElement('button'); button.type = 'button'; button.className = 'memory-card'; button.textContent = '?'; button.setAttribute('aria-label', `Karta ${i + 1}, otočit`);
-      const card = { button, symbol, matched: false };
-      button.onclick = () => {
-        if (locked || card.matched || card === first) return;
-        button.textContent = symbol; button.classList.add('revealed'); button.setAttribute('aria-label', `Karta ${i + 1}: ${symbol}`);
-        if (!first) { first = card; return; }
-        moves++;
-        if (first.symbol === symbol) {
-          for (const c of [first, card]) { c.matched = true; c.button.className = 'memory-card matched'; c.button.disabled = true; }
-          pairs++; first = null; updateMemory();
-          if (pairs === 6) get('memory-result').textContent = `Hotovo! Všech 6 dvojic na ${moves} tahů. Skvělá paměť!`;
-        } else {
-          locked = true; const previous = first;
-          flipTimer = setTimeout(() => { for (const c of [previous, card]) { c.button.textContent = '?'; c.button.className = 'memory-card'; c.button.setAttribute('aria-label', `Karta ${cards.indexOf(c) + 1}, otočit`); } first = null; locked = false; }, 850);
-        }
-        updateMemory();
-      };
-      get('memory-board').appendChild(button); return card;
-    });
-    get('memory-result').textContent = ''; updateMemory();
+  function saveBest(key, score) {
+    const old=getBest(key);if(!Number.isFinite(score)||score<0)return old;
+    const value=key==='reaction' && old ? Math.min(old,Math.round(score)) : Math.max(old,Math.round(score));
+    bestCache.set(key,value);try{localStorage.setItem(storeKey(key),String(value));}catch{}
+    const target=query(`[data-best="${key}"]`);if(target)target.textContent=value ? 'Rekord '+value+(key==='reaction'?' ms':'') : 'Tvůj první rekord čeká';
+    return value;
   }
-  function updateMemory() { get('memory-score').textContent = `Dvojice ${pairs}/6 · Tahy ${moves}`; }
-  get('memory-reset').onclick = resetMemory;
-  let tttCells=[], tttButtons=[], tttBusy=false, tttOver=false, computerTimer=null;
-  const winLines=[[0,1,2],[3,4,5],[6,7,8],[0,3,6],[1,4,7],[2,5,8],[0,4,8],[2,4,6]];
-  function winningLine(cells,mark){return winLines.find(line=>line.every(i=>cells[i]===mark));}
-  function finishTtt(){
-    const winner=winningLine(tttCells,'X')||winningLine(tttCells,'O');
-    if(winner){tttOver=true;tttBusy=false;get('ttt-result').textContent=tttCells[winner[0]]==='X'?'Vyhrál jsi! Skvělá hra.':'Počítač vyhrál. Zkus odvetu!';winner.forEach(i=>tttButtons[i].classList.add('winner'));}
-    else if(tttCells.every(Boolean)){tttOver=true;tttBusy=false;get('ttt-result').textContent='Remíza! Dáme odvetu?';}
-    tttButtons.forEach((b,i)=>{b.textContent=tttCells[i]||'·';b.disabled=tttOver||tttBusy||Boolean(tttCells[i]);b.setAttribute('aria-label',`Pole ${i+1}: ${tttCells[i]||'prázdné'}`);});
-    return tttOver;
+  function pauseAll(){for(const instance of instances.values())instance.game.pause();}
+  async function select(id) {
+    if(destroyed || !games[id])return;
+    const token=++selection;pauseAll();selected=id;
+    for(const [key,entry] of instances)entry.element.hidden=key!==id;
+    query('.arc-catalog').querySelectorAll('button').forEach(button=>{const active=button.dataset.game===id;button.setAttribute('aria-pressed',String(active));});
+    const data=games[id];query('.arc-game-title').textContent=data.name;query('.arc-category').textContent=data.category;query('.arc-controls').textContent=data.meta;
+    const loading=query('.arc-loading');loading.hidden=false;loading.textContent='Načítám '+data.name+'…';
+    try {
+      if(!instances.has(id)) {
+        if(!loaded.has(id))loaded.set(id,Promise.all([import(data.module),data.css?loadStyle(data.css):Promise.resolve()]));
+        const [module]=await loaded.get(id);
+        if(destroyed||selection!==token)return;
+        const element=document.createElement('div');element.className='arc-stage';element.dataset.stage=id;query('.arc-stages').appendChild(element);
+        let game;try{game=module.mount(element,{getBest,saveBest});}catch(error){element.remove();throw error;}
+        instances.set(id,{element,game});
+      }
+      if(destroyed||selection!==token)return;
+      instances.get(id).element.hidden=false;loading.hidden=true;
+    }catch(error){loaded.delete(id);if(selection!==token||destroyed)return;loading.textContent='Hru se nepodařilo načíst. Zkus ji vybrat znovu.';}
   }
-  function resetTtt(){
-    clearTimeout(computerTimer);tttCells=Array(9).fill(null);tttBusy=false;tttOver=false;get('ttt-board').replaceChildren();get('ttt-result').textContent='Jsi na tahu. Hraješ za X.';
-    tttButtons=tttCells.map((_,i)=>{const button=document.createElement('button');button.type='button';button.className='ttt-cell';button.onclick=()=>{
-      if(tttBusy||tttOver||tttCells[i])return;
-      tttCells[i]='X';tttBusy=true;
-      if(finishTtt())return;
-      get('ttt-result').textContent='Počítač přemýšlí…';
-      computerTimer=setTimeout(()=>{
-        const free=tttCells.flatMap((v,index)=>v?[]:[index]);
-        const wouldWin=mark=>free.find(index=>{const copy=[...tttCells];copy[index]=mark;return Boolean(winningLine(copy,mark));});
-        let move=wouldWin('O')??wouldWin('X');
-        if(move===undefined)move=!tttCells[4]?4:free[Math.floor(Math.random()*free.length)];
-        if(move!==undefined)tttCells[move]='O';tttBusy=false;
-        if(!finishTtt())get('ttt-result').textContent='Jsi na tahu.';
-      },300);
-    };get('ttt-board').appendChild(button);return button;});finishTtt();
+  for(const [id,data] of Object.entries(games)) {
+    const button=document.createElement('button');button.type='button';button.className='arc-game-card arc-'+data.hue;button.dataset.game=id;button.setAttribute('aria-pressed','false');
+    button.innerHTML=`<span class="arc-card-icon" aria-hidden="true">${data.icon}</span><span class="arc-card-content"><small>${data.category}</small><strong>${data.name}</strong><span>${data.copy}</span><em data-best="${id}"></em></span><span class="arc-card-arrow" aria-hidden="true"><svg viewBox="0 0 16 16" fill="none"><path d="M4 12 12 4M4 4h8v8" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg></span>`;
+    const best=getBest(id);button.querySelector('em').textContent=best?'Rekord '+best+(id==='reaction'?' ms':''):'Tvůj první rekord čeká';
+    button.addEventListener('click',()=>select(id),{signal:controller.signal});query('.arc-catalog').appendChild(button);
   }
-  get('ttt-reset').onclick=resetTtt;
-  let mathTimer=null,mathDeadline=0,mathPoints=0,mathExpected=0,mathActive=false;
-  function updateMathScore(){get('math-score').textContent=`Čas: ${Math.max(0,Math.ceil((mathDeadline-performance.now())/1000))} s · Body: ${mathPoints}`;}
-  function stopMath(){
-    if(!mathActive)return;mathActive=false;clearInterval(mathTimer);get('math-play').hidden=true;get('math-start').hidden=false;get('math-result').textContent=`Hotovo! Správné odpovědi: ${mathPoints}. Zkus další kolo.`;
-  }
-  function nextMath(){
-    const op=Math.floor(Math.random()*3);let a,b,sign;
-    if(op===2){a=1+Math.floor(Math.random()*9);b=1+Math.floor(Math.random()*9);sign='×';mathExpected=a*b;}
-    else {a=1+Math.floor(Math.random()*20);b=1+Math.floor(Math.random()*20);if(op===1&&b>a)[a,b]=[b,a];sign=op===0?'+':'−';mathExpected=op===0?a+b:a-b;}
-    get('math-question').textContent=`${a} ${sign} ${b} = ?`;get('math-answer').value='';get('math-answer').focus();
-  }
-  get('math-start').onclick=()=>{clearInterval(mathTimer);mathActive=true;mathPoints=0;mathDeadline=performance.now()+30000;get('math-result').textContent='';get('math-play').hidden=false;get('math-start').hidden=true;updateMathScore();nextMath();mathTimer=setInterval(()=>{updateMathScore();if(performance.now()>=mathDeadline)stopMath();},200);};
-  get('math-form').onsubmit=event=>{event.preventDefault();if(!mathActive)return;if(performance.now()>=mathDeadline){updateMathScore();stopMath();return;}
-    if(get('math-answer').value.trim()==='')return;
-    if(Number(get('math-answer').value)===mathExpected){mathPoints++;get('math-result').textContent='Správně!';updateMathScore();nextMath();}
-    else {get('math-result').textContent='Zkus to ještě jednou.';get('math-answer').select();}
-  };
-  function selectGame(name){
-    cancelReaction();stopMath();
-    for(const game of ['reaction','memory','ttt','math']){get(game+'-game').hidden=game!==name;get(game+'-tab').setAttribute('aria-pressed',String(game===name));}
-    if(name==='memory'&&!cards.length)resetMemory();if(name==='ttt'&&!tttButtons.length)resetTtt();
-  }
-  for(const name of ['reaction','memory','ttt','math'])get(name+'-tab').onclick=()=>selectGame(name);
-  get('games-panel').addEventListener('toggle',()=>{if(!get('games-panel').open){cancelReaction();stopMath();}});
-  document.addEventListener('visibilitychange',()=>{if(document.hidden){cancelReaction();stopMath();}});
-})();
+  details.addEventListener('toggle',()=>{if(!details.open)pauseAll();},{signal:controller.signal});
+  document.addEventListener('visibilitychange',()=>{if(document.hidden)pauseAll();},{signal:controller.signal});
+  window.addEventListener('blur',pauseAll,{signal:controller.signal});window.addEventListener('pagehide',pauseAll,{signal:controller.signal});
+  const observer=typeof IntersectionObserver==='function'?new IntersectionObserver(entries=>{if(!entries[0].isIntersecting)pauseAll();}):null;observer?.observe(query('.arc-arena'));
+  await select('reaction');
+  return {pause:pauseAll,destroy(){destroyed=true;selection++;observer?.disconnect();controller.abort();for(const entry of instances.values())entry.game.destroy();instances.clear();root.replaceChildren();}};
+}
