@@ -85,11 +85,18 @@
         const res = await fetch('/api/list');
         const data = await res.json();
         
+        // Zobraz aktuální kód
+        if (data.code) {
+          document.getElementById('code').textContent = data.code;
+        } else {
+          document.getElementById('code').textContent = '----';
+        }
+
         const tbody = document.getElementById('list');
         tbody.innerHTML = '';
         
-        if (Array.isArray(data)) {
-          data.forEach(row => {
+        if (data.students && Array.isArray(data.students)) {
+          data.students.forEach(row => {
             const tr = document.createElement('tr');
             const time = new Date(row.created_at).toLocaleTimeString('cs');
             tr.innerHTML = `<td>${row.name}</td><td>${time}</td>`;
@@ -101,7 +108,7 @@
       }
     }
 
-    // Načti seznam při otevření stránky
+    // Načti seznam + kód při otevření stránky
     loadList();
   </script>
 </body>
