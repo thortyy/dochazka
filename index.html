@@ -23,6 +23,24 @@
   <div id="message" role="status"></div>
   </main>
 
+  <section class="card games-card">
+    <details id="games-panel"><summary>Krátká pauza? Zahraj si.</summary>
+      <p class="muted">Dvě rychlé hry jen pro zábavu. Nejdřív nezapomeň zapsat docházku.</p>
+      <div class="game-tabs" role="group" aria-label="Výběr minihry"><button id="reaction-tab" type="button" aria-pressed="true">⚡ Postřeh</button><button id="memory-tab" type="button" aria-pressed="false">🧩 Pexeso</button></div>
+      <section id="reaction-game" aria-label="Postřeh">
+        <p class="muted">Stiskni start. Počkej na zelenou a pak co nejrychleji klikni nebo stiskni mezerník na tlačítku.</p>
+        <button id="reaction-target" class="reaction-target" type="button">Spustit postřeh</button>
+        <p id="reaction-result" class="game-result" role="status">Jak rychlý máš postřeh?</p><p id="reaction-best" class="muted"></p>
+      </section>
+      <section id="memory-game" aria-label="Pexeso" hidden>
+        <p class="muted">Najdi všech 6 dvojic. Zkus co nejméně tahů.</p>
+        <div class="topbar"><p id="memory-score" class="muted" role="status"></p><button id="memory-reset" class="secondary" type="button">Nová hra</button></div>
+        <div id="memory-board" class="memory-board"></div>
+        <p id="memory-result" class="game-result" role="status"></p>
+      </section>
+    </details>
+  </section>
+  <script src="/games.js" defer></script>
   <script>
     // Zkontroluj, jestli už se z tohoto počítače na aktuální kód zapsal
     function alreadyCheckedIn(code) {
