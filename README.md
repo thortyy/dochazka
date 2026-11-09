@@ -53,3 +53,5 @@ Herní nabídka ani jednotlivé hry se při běžném načtení docházky nestah
 Rekordy se ukládají pouze v daném prohlížeči, žádné herní výsledky se neodesílají na server. Všechny hry podporují světlé i tmavé prostředí. Před výměnou her byla uložená větev `backup/pred-novymi-hrami-2026-11-09`.
 
 Čisté testy her bez externích závislostí: `node --test tests/tiles.test.mjs tests/snake.test.mjs tests/breaker.test.mjs`.
+
+Ruční změna docházky nyní vyžaduje potvrzení. Neon Had má plynulý pohyb, průchod okraji, úrovně po pěti soustech a každé čtvrté sousto za 30 bodů. Světlé téma učitele zahrnuje také panel hodiny.
