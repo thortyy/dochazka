@@ -7,10 +7,10 @@
   <link rel="stylesheet" href="/style.css">
 </head>
 <body class="teacher-page">
-  <p class="eyebrow">Učitelský přehled</p>
-  <h1>Vaše třída. Na jednom místě.</h1>
-  <p>Kdo už dorazil a kdo ještě chybí? Přehled máte hned po ruce.</p>
+<header class="site-header"><a class="brand" href="/admin" aria-label="Docházka – administrace"><span class="brand-mark"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="m6 12 4 4 8-8" stroke="currentColor" stroke-width="2.7" stroke-linecap="round" stroke-linejoin="round"/></svg></span><span>docházka<span class="brand-dot">.</span></span></a><div class="header-meta"><span class="mode-tag">Pro učitele</span><a class="header-link" href="/">Stránka žáků<svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M5 12h14m-5-5 5 5-5 5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></a></div></header>
+  <div class="page-heading"><div><p class="eyebrow">Vše na jednom místě</p><h1>Přehled docházky</h1><p>Více přehledu. Méně papírování.</p></div></div>
   <section id="auth-panel" class="card">
+    <span class="auth-symbol" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="m6 12 4 4 8-8" stroke="currentColor" stroke-width="2.7" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
     <h2 id="auth-title">Přihlášení</h2>
     <p id="auth-help" class="muted"></p>
     <form id="auth-form">
@@ -24,14 +24,14 @@
     <p id="auth-message" role="status"></p>
   </section>
   <main id="dashboard" hidden>
-  <div class="topbar"><span id="signed-in" class="muted"></span><button id="logout" class="secondary">Odhlásit se</button></div>
+  <div class="topbar account-bar"><span id="signed-in" class="muted"></span><button id="logout" class="secondary">Odhlásit se</button></div>
   <div class="stats" aria-label="Souhrn docházky">
-    <div class="stat"><span>Celkem žáků</span><strong id="total-count">—</strong><small>Seznam třídy</small></div>
-    <div class="stat stat-green"><span>Přítomní</span><strong id="present-count">—</strong><small>Úspěšně přihlášení</small></div>
-    <div class="stat stat-rose"><span>Chybějící</span><strong id="absent-count">—</strong><small>Dosud bez zápisu</small></div>
+    <div class="stat"><span><i class="metric-dot total-dot" aria-hidden="true"></i>Celkem žáků</span><strong id="total-count">—</strong><small>Seznam třídy</small></div>
+    <div class="stat stat-green"><span><i class="metric-dot present-dot" aria-hidden="true"></i>Přítomní</span><strong id="present-count">—</strong><small>Úspěšně přihlášení</small></div>
+    <div class="stat stat-rose"><span><i class="metric-dot absent-dot" aria-hidden="true"></i>Chybějící</span><strong id="absent-count">—</strong><small>Dosud bez zápisu</small></div>
   </div>
   <section class="card session-card">
-    <div class="session-info"><p class="eyebrow">Aktuální hodina</p><span class="muted">Kód pro přihlášení žáků</span>
+    <div class="session-info"><p class="eyebrow">Ovládání hodiny</p><span class="muted">Kód pro přihlášení žáků</span>
       <div id="code" aria-label="Kód aktuální hodiny">----</div>
       <button id="copy-code" class="secondary" disabled>Kopírovat kód</button>
       <span id="copy-status" class="muted" role="status"></span>
@@ -47,8 +47,8 @@
   <div class="attendance-progress"><div class="topbar"><span id="progress-label">Čekáme na načtení docházky</span><span id="last-updated" class="muted"></span></div>
     <progress id="attendance-progress" value="0" max="100" aria-label="Podíl přítomných žáků"></progress>
   </div>
-  <section class="card">
-  <div class="topbar"><div><h2>Seznam žáků</h2><span class="muted">Podle příjmení · aktualizace každých 5 sekund</span></div><button id="export-csv" class="secondary" disabled>Stáhnout CSV</button></div>
+  <section class="card roster-card">
+  <div class="topbar roster-heading"><div><p class="eyebrow">Vaše třída</p><h2>Seznam žáků</h2><span class="muted">Podle příjmení · aktualizace každých 5 sekund</span></div><button id="export-csv" class="secondary" disabled>Stáhnout CSV</button></div>
   <div class="list-toolbar"><div class="search-field"><label for="student-search">Najít žáka</label><input id="student-search" type="search" placeholder="Jméno nebo příjmení…" autocomplete="off"></div>
     <div class="filters" role="group" aria-label="Filtrovat docházku"><button type="button" data-filter="all" aria-pressed="true">Všichni</button><button type="button" data-filter="present" aria-pressed="false">Tu</button><button type="button" data-filter="absent" aria-pressed="false">Není tu</button></div></div>
   <p id="result-count" class="muted" role="status"></p>
@@ -90,6 +90,7 @@
   </section>
 </main>
 
+  <footer class="site-footer"><span>docházka<span class="brand-dot">.</span></span><span>Každý příchod se počítá.</span></footer>
   <script>
     let signedIn = false;
     let extending = false;

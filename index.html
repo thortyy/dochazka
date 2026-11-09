@@ -5,26 +5,33 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Docházka</title>
   <link rel="stylesheet" href="/style.css">
-  <style>body{max-width:500px}#btn{width:100%}</style>
 </head>
-<body>
-  <p class="eyebrow">Školní docházka</p>
-  <h1>Jsem tady.</h1>
-  <p>Zapiš svou přítomnost během pár sekund.</p>
-  <main class="card">
+<body class="student-page">
+<header class="site-header"><a class="brand" href="/" aria-label="Docházka – úvod"><span class="brand-mark"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="m6 12 4 4 8-8" stroke="currentColor" stroke-width="2.7" stroke-linecap="round" stroke-linejoin="round"/></svg></span><span>docházka<span class="brand-dot">.</span></span></a><div class="header-meta"><span class="mode-tag">Pro žáky</span><a class="header-link" href="/admin">Pro učitele<svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M5 12h14m-5-5 5 5-5 5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></a></div></header>
+  <div class="student-layout">
+  <section class="student-intro" aria-labelledby="student-title">
+    <span class="intro-label"><span aria-hidden="true"></span>Malý krok na začátku hodiny</span>
+    <h1 id="student-title">Jsem<br><span>tady.</span></h1>
+    <p>Jméno, kód a hotovo.<br> Ať zbyde víc času na to důležité.</p>
+    <ol class="checkin-steps" aria-label="Jak se zapsat"><li><span>01</span>Tvoje jméno</li><li><span>02</span>Kód hodiny</li><li><span>03</span>Potvrzení</li></ol>
+    <div class="intro-sign" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="m6 12 4 4 8-8" stroke="currentColor" stroke-width="2.7" stroke-linecap="round" stroke-linejoin="round"/></svg><span>Další hodina.<br>Nové možnosti.</span></div>
+  </section>
+  <main class="card checkin-card" aria-label="Zápis docházky">
+  <div class="form-heading"><span class="form-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M5 12h14m-5-5 5 5-5 5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></span><div><p class="eyebrow">Za pár vteřin vyřízeno</p><h2>Zapiš svou přítomnost</h2></div></div>
   
   <label for="name">Jméno a příjmení</label>
   <input type="text" id="name" placeholder="Zadej své jméno a příjmení" autocomplete="name" aria-describedby="name-help" required>
   <p id="name-help">Napiš celé jméno a příjmení, např. Josef Kuchař. Přihlášení je otevřené 10 minut od spuštění hodiny učitelem.</p>
   <label for="code">Kód hodiny</label>
-  <input type="text" id="code" placeholder="Kód hodiny" required>
+  <input type="text" id="code" placeholder="ABCD" autocapitalize="characters" spellcheck="false" required>
   <button id="btn" onclick="checkIn()">Jsem tady</button>
   
   <div id="message" role="status"></div>
   </main>
+  </div>
 
   <section class="card games-card">
-    <details id="games-panel"><summary>Krátká pauza? Zahraj si.</summary>
+    <details id="games-panel"><summary><span class="games-summary-title"><span class="games-symbol" aria-hidden="true">✳</span><span>Krátká pauza? Zahraj si.</span></span><span class="games-count">4 minihry</span></summary>
       <p class="muted">Čtyři rychlé hry jen pro zábavu. Nejdřív nezapomeň zapsat docházku.</p>
       <div class="game-tabs" role="group" aria-label="Výběr minihry"><button id="reaction-tab" type="button" aria-pressed="true">⚡ Postřeh</button><button id="memory-tab" type="button" aria-pressed="false">🧩 Pexeso</button><button id="ttt-tab" type="button" aria-pressed="false">⭕ Piškvorky</button><button id="math-tab" type="button" aria-pressed="false">🔢 Počítání</button></div>
       <section id="reaction-game" aria-label="Postřeh">
@@ -53,6 +60,7 @@
       </section>
     </details>
   </section>
+  <footer class="site-footer"><span>docházka<span class="brand-dot">.</span></span><span>Každý příchod se počítá.</span></footer>
   <script src="/games.js" defer></script>
   <script>
     // Zkontroluj, jestli už se z tohoto počítače na aktuální kód zapsal
