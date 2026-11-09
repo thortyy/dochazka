@@ -299,7 +299,9 @@
       catch(err){document.getElementById('invite-message').textContent=err.message;}finally{button.disabled=false;}
     };
     async function editStudent(row) {
-      if(editing)return;editing=true;renderStudents();
+      if(editing)return;
+      if(!window.confirm(`Změnit docházku žáka ${row.name} na „${row.present?'Není tu':'Tu'}“?`))return;
+      editing=true;renderStudents();
       try {
         const res=await fetch('/api/edit',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({code:document.getElementById('code').textContent,name:row.name,present:!row.present})});
         const data=await res.json();

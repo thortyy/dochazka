@@ -12,14 +12,14 @@ test('initial state has room to react, valid food, and does not mutate on a step
   assert.deepEqual(start,snapshot);
   assert.ok(!start.snake.some(p=>p.x===start.food.x&&p.y===start.food.y));
 });
-test('a reversal is ignored, perpendicular turns work, and hitting a wall ends the game', () => {
+test('a reversal is ignored, perpendicular turns work, and edges wrap to the other side', () => {
   const start=createSnakeState(()=>0);
   assert.equal(advanceSnake(start,'left').direction,'right');
   assert.equal(advanceSnake(start,'up').snake[0].y,9);
   let state=start;
   for(let i=0;i<14;i++)state=advanceSnake(state,'right');
-  assert.equal(state.over,true);
-  assert.equal(advanceSnake(state),state);
+  assert.equal(state.over,false);
+  assert.equal(state.snake[0].x,0);
 });
 test('food grows the snake and gives points', () => {
   const start={...createSnakeState(()=>0),food:{x:7,y:10}};

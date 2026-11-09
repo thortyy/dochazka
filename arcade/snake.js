@@ -22,7 +22,7 @@ export function advanceSnake(state, requestedDirection = state.direction, random
   if (state.over || state.won) return state;
   const direction = VECTORS[requestedDirection] && OPPOSITE[state.direction] !== requestedDirection ? requestedDirection : state.direction;
   const [dx, dy] = VECTORS[direction];
-  const head = { x: state.snake[0].x + dx, y: state.snake[0].y + dy };
+  const head = { x: (state.snake[0].x + dx + GRID) % GRID, y: (state.snake[0].y + dy + GRID) % GRID };
   const eating = Boolean(state.food && head.x === state.food.x && head.y === state.food.y);
   const body = eating ? state.snake : state.snake.slice(0, -1);
   if (head.x < 0 || head.y < 0 || head.x >= GRID || head.y >= GRID || body.some(p => p.x === head.x && p.y === head.y)) {
@@ -45,11 +45,11 @@ export function mount(container, services = {}) {
     <div class="snake-metrics" aria-label="Skóre hry"><div><span>Skóre</span><strong data-snake-score>0</strong></div><div><span>Tvůj rekord</span><strong data-snake-best>0</strong></div><div><span>Úroveň</span><strong data-snake-level>1</strong></div></div>
     <div class="snake-board" tabindex="0" role="group" aria-label="Herní pole hada. Ovládání šipkami nebo W A S D.">
       <canvas width="400" height="400" aria-label="Had a svítící sousto na herní ploše">Tvůj prohlížeč nepodporuje canvas. Zkus jiný prohlížeč.</canvas>
-      <div class="snake-overlay"><span class="snake-overlay-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><path d="M5 17h5v-5h5V6m-4 0h4v4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></span><h4 data-snake-title>První sousto čeká.</h4><p data-snake-description>Posbírej světelné body. Vyhni se stěnám a vlastnímu ocasu.</p><button class="snake-start" type="button">Spustit hru</button><span class="snake-overlay-hint">Šipky / WASD / tlačítka pod hrou</span></div>
+      <div class="snake-overlay"><span class="snake-overlay-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><path d="M5 17h5v-5h5V6m-4 0h4v4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></span><h4 data-snake-title>První sousto čeká.</h4><p data-snake-description>Posbírej světelné body. Okrajem projedeš na druhou stranu. Pozor na vlastní ocas.</p><button class="snake-start" type="button">Spustit hru</button><span class="snake-overlay-hint">Šipky / WASD / tlačítka pod hrou</span></div>
     </div>
     <div class="snake-actions"><button class="snake-pause" type="button" disabled>Pozastavit</button><button class="snake-reset" type="button">Nová hra</button></div>
     <div class="snake-controls" role="group" aria-label="Směr hada"><button type="button" data-snake-dir="up" aria-label="Nahoru">↑</button><button type="button" data-snake-dir="left" aria-label="Doleva">←</button><button type="button" data-snake-dir="down" aria-label="Dolů">↓</button><button type="button" data-snake-dir="right" aria-label="Doprava">→</button></div>
-    <p class="snake-help">Každé sousto přidá 10 bodů. Had postupně zrychluje. Mimo hru se šipky chovají normálně.</p><p class="snake-announcement" role="status" aria-live="polite"></p>`;
+    <p class="snake-help">Každé sousto přidá 10 bodů. Had zrychluje a okraje tě pustí na druhou stranu. Pozor na vlastní ocas.</p><p class="snake-announcement" role="status" aria-live="polite"></p>`;
   container.appendChild(root);
   const get = selector => root.querySelector(selector);
   const canvas = get('canvas');
@@ -142,7 +142,7 @@ export function mount(container, services = {}) {
       pendingDirection = null;
       updateMetrics(); render();
       if (state.over || state.won) finish(); else schedule();
-    }, Math.max(85, 180 - Math.floor(state.score / 10) * 4));
+    }, Math.max(65, 125 - Math.floor(state.score / 10) * 4));
   }
   function pause() {
     if (destroyed || mode !== 'running') return;
