@@ -1,3 +1,4 @@
+import { studentPasswordGate,ensureStudentPasswords } from '../_shared/student-passwords.js';
 import { networkGate } from '../_shared/network.js';
 import { ensureWindows, json, findStudent } from '../_shared/attendance.js';
 
@@ -22,6 +23,8 @@ export async function onRequestPost({ request, env }) {
     if (!session.expires_at || Date.now() >= session.expires_at) {
       return json({ error: 'Časový limit 10 minut vypršel. Přihlášení je uzavřené.' }, 400);
     }
+    const passwordDenied=await studentPasswordGate({request,env},name,body.studentPassword);
+    if(passwordDenied)return passwordDenied;
     // Ověř limit a aktivní hodinu znovu při samotném zápisu.
     const result = await env.DB.prepare(`INSERT INTO attendance (name, code)
       SELECT ?, ? WHERE EXISTS (
@@ -37,4 +40,9 @@ export async function onRequestPost({ request, env }) {
   } catch (err) {
     return json({ error: 'Chyba serveru' }, 500);
   }
+}
+
+export async function onRequestGet({env}){
+  try{await ensureStudentPasswords(env.DB);const row=await env.DB.prepare('SELECT enabled FROM student_password_policy WHERE id=1').first();return json({passwordRequired:Boolean(row.enabled)});}
+  catch{return json({error:'Stav ověření se nepodařilo načíst'},500);}
 }

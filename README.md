@@ -9,7 +9,7 @@ V nastavení **Production** v Cloudflare Pages nastavte **Variables and secrets*
 - název: `ADMIN_SETUP_KEY`
 - hodnota: vlastní náhodný jednorázový kód alespoň o 20 znacích. Nepatří do repozitáře ani chatu.
 
-Po nasazení otevřete `/admin`. Správce `thortyy` zadá jednorázový kód a nastaví si vlastní heslo (12–128 znaků). Kód funguje jen před založením správce; potom jej můžete z Cloudflare odstranit.
+Po nasazení otevřete `/admin`. Správce `thortyy` zadá jednorázový kód a nastaví si vlastní heslo (6–128 znaků). Kód funguje jen před založením správce; potom jej můžete z Cloudflare odstranit.
 
 Správce vytvoří na stránce pozvánku pro učitele a soukromě mu předá odkaz. Pozvánka platí 24 hodin a je jednorázová. Učitel si zvolí vlastní přihlašovací jméno a heslo. Oba mohou spouštět hodiny a sledovat docházku. Pozvánky vytváří pouze správce.
 
@@ -55,3 +55,17 @@ Rekordy se ukládají pouze v daném prohlížeči, žádné herní výsledky se
 Čisté testy her bez externích závislostí: `node --test tests/tiles.test.mjs tests/snake.test.mjs tests/breaker.test.mjs`.
 
 Ruční změna docházky nyní vyžaduje potvrzení. Neon Had má plynulý pohyb, průchod okraji, úrovně po pěti soustech a každé čtvrté sousto za 30 bodů. Světlé téma učitele zahrnuje také panel hodiny.
+
+## Osobní hesla žáků
+
+Učitel nebo správce rozbalí **Hesla žáků**, vybere jméno a nastaví žákovi vlastní heslo. Heslo nemá minimum délky ani pravidla složitosti; prázdné heslo se nepřijímá. Po uložení se nikde nezobrazuje a v databázi je jen PBKDF2 hash s náhodnou solí. Při změně již nastaveného hesla je nutné potvrzení. Žákovi předejte heslo soukromě.
+
+Ochrana je po nasazení **vypnutá**. Po nastavení hesel všem 27 žákům a jejich předání potvrďte políčko a zvolte **Zapnout povinná hesla**. Od té chvíle server u každého zápisu kontroluje kombinaci jména a osobního hesla nezávisle na prohlížeči. Společný kód hodiny i školní síť se ověřují nadále. Bez nastaveného či správného hesla nelze žáka zapsat; při problémech může učitel stále provést ruční zápis. Kdo zná cizí heslo, může je použít, proto žáci hesla nesdílejí.
+
+Po deseti nesprávných heslech se další pokusy pro daného žáka a IP na 15 minut omezí. Nejde o omezení délky nebo složitosti hesla. Úspěšné ověření před zablokováním čítač maže. Do formuláře se heslo neukládá a po zápisu se smaže z pole.
+
+Učitel i správce mají v administraci **Změnit moje heslo**. Nové heslo má minimum 6 znaků, stávající hesla zůstávají platná. Změna vyžaduje současné heslo, ukončí ostatní přihlášení daného účtu a aktuálnímu prohlížeči vytvoří nové přihlášení.
+
+Souhrnné počty i procenta odpovídají vybrané skupině AJ1 (14 žáků), AJ2 (13) nebo celé třídě. Hledání a filtry Tu/Není tu pracují v právě vybrané skupině; Všichni přepne na celou třídu.
+
+Testy: `node --test tests/student-passwords.test.mjs tests/auth.test.mjs`.
