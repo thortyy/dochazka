@@ -31,6 +31,7 @@
     <div class="stat stat-green"><span><i class="metric-dot present-dot" aria-hidden="true"></i>Přítomní</span><strong id="present-count">—</strong><small>Úspěšně přihlášení</small></div>
     <div class="stat stat-rose"><span><i class="metric-dot absent-dot" aria-hidden="true"></i>Chybějící</span><strong id="absent-count">—</strong><small>Dosud bez zápisu</small></div>
   </div>
+  <aside class="dashboard-tools" aria-label="Hodina a nastavení">
   <section class="card session-card">
     <div class="session-info"><p class="eyebrow">Ovládání hodiny</p><span class="muted">Kód pro přihlášení žáků</span>
       <div id="code" aria-label="Kód aktuální hodiny">----</div>
@@ -48,27 +49,6 @@
   <div class="attendance-progress"><div class="topbar"><span id="progress-label">Čekáme na načtení docházky</span><span id="last-updated" class="muted"></span></div>
     <progress id="attendance-progress" value="0" max="100" aria-label="Podíl přítomných žáků"></progress>
   </div>
-  <section class="card roster-card">
-  <div class="topbar roster-heading"><div><p class="eyebrow">Vaše třída</p><h2>Seznam žáků</h2><span class="muted" id="refresh-rate">Podle příjmení · aktualizace každých 5 sekund</span></div><button id="export-csv" class="secondary" disabled>Stáhnout CSV</button></div>
-  <div class="list-toolbar"><div class="search-field"><label for="student-search">Najít žáka</label><input id="student-search" type="search" placeholder="Jméno nebo příjmení…" autocomplete="off"></div>
-    <div class="filters" role="group" aria-label="Filtrovat docházku"><button type="button" data-filter="all" aria-pressed="true">Všichni</button><button type="button" data-filter="present" aria-pressed="false">Tu</button><button type="button" data-filter="absent" aria-pressed="false">Není tu</button></div></div>
-  <p id="result-count" class="muted" role="status"></p>
-  <p id="manual-status" class="muted" role="status">Kliknutím na stav Tu / Není tu upravíte docházku.</p>
-  <div class="table-wrap roster-scroll" tabindex="0" role="region" aria-label="Seznam žáků">
-  
-  <table>
-    <thead>
-      <tr>
-        <th>Jméno</th>
-        <th>Stav</th>
-        <th>Čas příchodu</th>
-      </tr>
-    </thead>
-    <tbody id="list"></tbody>
-  </table>
-  </div>
-  <div class="pagination"><label for="page-size">Na stránce <select id="page-size"><option value="10">10 žáků</option><option value="27">Celá třída</option></select></label><div><button id="previous-page" class="secondary" type="button">Předchozí</button><span id="page-info" class="muted"></span><button id="next-page" class="secondary" type="button">Další</button></div></div>
-  </section>
   <section id="owner-tools" class="card" hidden>
     <details><summary>Správa přístupu pro učitele</summary>
     <p class="muted">Vytvořte jednorázovou pozvánku platnou 24 hodin. Učitel si přes ni zvolí své jméno a heslo. Odkaz předejte pouze učiteli.</p>
@@ -88,6 +68,28 @@
       <p class="muted">Jiné školní přípojky mohou mít další veřejnou IP. Přidejte je stejným tlačítkem z dané sítě. IPv6 může mít každý počítač jinou adresu. Mobily na stejné povolené síti se mohou také zapsat.</p>
       <p id="network-message" role="status"></p>
     </details>
+  </section>
+  </aside>
+  <section class="card roster-card">
+  <div class="topbar roster-heading"><div><p class="eyebrow">Vaše třída</p><h2>Seznam žáků</h2><span class="muted" id="refresh-rate">Podle příjmení · aktualizace každých 5 sekund</span></div><button id="export-csv" class="secondary" disabled>Stáhnout CSV</button></div>
+  <div class="list-toolbar"><div class="search-field"><label for="student-search">Najít žáka</label><input id="student-search" type="search" placeholder="Jméno nebo příjmení…" autocomplete="off"></div>
+    <div class="filters" role="group" aria-label="Filtrovat docházku"><button type="button" data-filter="all" aria-pressed="true">Všichni</button><button type="button" data-filter="present" aria-pressed="false">Tu</button><button type="button" data-filter="absent" aria-pressed="false">Není tu</button></div></div>
+  <p id="result-count" class="muted" role="status"></p>
+  <p id="manual-status" class="muted" role="status">Kliknutím na stav Tu / Není tu upravíte docházku.</p>
+  <div class="table-wrap roster-scroll" tabindex="0" role="region" aria-label="Seznam žáků">
+  
+  <table>
+    <thead>
+      <tr>
+        <th>Jméno</th>
+        <th>Stav</th>
+        <th>Čas příchodu</th>
+      </tr>
+    </thead>
+    <tbody id="list"></tbody>
+  </table>
+  </div>
+  <div class="pagination"><label for="page-size">Na stránce <select id="page-size"><option value="14">Po Prchala (14 žáků)</option><option value="27">Celá třída</option></select></label><div><button id="previous-page" class="secondary" type="button">Předchozí</button><span id="page-info" class="muted"></span><button id="next-page" class="secondary" type="button">Další</button></div></div>
   </section>
 </main>
 
