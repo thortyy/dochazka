@@ -18,7 +18,7 @@
       <label for="username">Přihlašovací jméno</label>
       <input id="username" name="username" autocomplete="username" required minlength="3" maxlength="40">
       <label for="password">Heslo</label>
-      <input id="password" name="password" type="password" autocomplete="current-password" required minlength="12" maxlength="128">
+      <input id="password" name="password" type="password" autocomplete="current-password" required minlength="6" maxlength="128">
       <div id="setup-field" hidden><label for="setup-key">Jednorázový kód pro založení administrace</label><input id="setup-key" type="password" autocomplete="off"></div>
       <button id="auth-submit" type="submit">Přihlásit se</button>
     </form>
@@ -69,6 +69,33 @@
       <p id="network-message" role="status"></p>
     </details>
   </section>
+  <section class="card" id="student-password-tools">
+    <details><summary>Hesla žáků <span id="student-password-badge" class="muted"></span></summary>
+      <p class="muted">Každý žák má vlastní heslo. Jiný prohlížeč pak nestačí k zápisu cizího jména. Heslo může být libovolně krátké, ale nesmí být prázdné.</p>
+      <p id="student-password-count" class="muted"></p>
+      <form id="student-password-form">
+        <label for="student-password-name">Žák</label><select id="student-password-name" required><option value="">Vyberte žáka</option></select>
+        <label for="student-new-password">Heslo žáka</label><input id="student-new-password" type="password" autocomplete="new-password" required>
+        <p class="muted">Po uložení se heslo už nezobrazí. Předejte ho pouze danému žákovi. Nové heslo nahradí původní.</p>
+        <button type="submit" id="student-password-save" class="secondary">Uložit heslo žáka</button>
+      </form>
+      <label class="checkbox-label"><input id="passwords-distributed" type="checkbox"> Všem žákům jsem předal jejich hesla.</label>
+      <button id="student-password-enable" class="secondary" disabled>Zapnout povinná hesla</button>
+      <button id="student-password-disable" class="secondary" hidden>Vypnout povinná hesla</button>
+      <p id="student-password-message" role="status" class="muted"></p>
+    </details>
+  </section>
+  <section class="card" id="my-password-tools">
+    <details><summary>Změnit moje heslo</summary>
+      <form id="my-password-form">
+        <label for="current-password">Současné heslo</label><input id="current-password" type="password" autocomplete="current-password" required>
+        <label for="new-password">Nové heslo (alespoň 6 znaků)</label><input id="new-password" type="password" autocomplete="new-password" minlength="6" maxlength="128" required>
+        <label for="repeat-password">Nové heslo znovu</label><input id="repeat-password" type="password" autocomplete="new-password" minlength="6" maxlength="128" required>
+        <button type="submit" id="my-password-save" class="secondary">Změnit heslo</button>
+      </form>
+      <p id="my-password-message" class="muted" role="status"></p>
+    </details>
+  </section>
   </aside>
   <section class="card roster-card">
   <div class="topbar roster-heading"><div><p class="eyebrow">Vaše třída</p><h2>Seznam žáků</h2><span class="muted" id="refresh-rate">Podle příjmení · aktualizace každých 5 sekund</span></div><button id="export-csv" class="secondary" disabled>Stáhnout CSV</button></div>
@@ -114,22 +141,21 @@
     };
     let students = [];
     let activeFilter = 'all';
-    let currentPage=1, editing=false;
+    let currentPage=1, selectedGroup=1, editing=false;
+    function groupStudents(){return selectedGroup ? students.slice((selectedGroup-1)*14,selectedGroup*14) : students;}
     let networkIp=null;
     const normalizeSearch = value => value.normalize('NFD').replace(/\p{M}/gu, '').toLocaleLowerCase('cs');
     function renderStudents() {
       const query = normalizeSearch(document.getElementById('student-search').value.trim());
-      const rows = students.filter(row => normalizeSearch(row.name).includes(query) && (activeFilter === 'all' || (activeFilter === 'present' ? row.present : !row.present)));
+      const scope=groupStudents();
+      const rows = scope.filter(row => normalizeSearch(row.name).includes(query) && (activeFilter === 'all' || (activeFilter === 'present' ? row.present : !row.present)));
       const tbody = document.getElementById('list');
       tbody.replaceChildren();
-      const pageSize=Number(document.getElementById('page-size').value);
-      document.querySelector('.roster-card').dataset.group=pageSize===14?String(currentPage):'all';
-      const pages=Math.max(1,Math.ceil(rows.length/pageSize));
-      currentPage=Math.min(currentPage,pages);
-      document.getElementById('page-info').textContent=`${pageSize===14 && !query && activeFilter==='all' ? 'AJ'+currentPage+' · ' : ''}${currentPage} / ${pages}`;
-      document.getElementById('previous-page').disabled=pageSize===14 && currentPage===1 && activeFilter==='all' && !query;
-      document.getElementById('next-page').disabled=pageSize===14 && currentPage===2 && activeFilter==='all' && !query;
-      rows.slice((currentPage-1)*pageSize,currentPage*pageSize).forEach(row => {
+      document.querySelector('.roster-card').dataset.group=selectedGroup?String(selectedGroup):'all';
+      document.getElementById('page-info').textContent=selectedGroup?'AJ'+selectedGroup:'Všichni';
+      document.getElementById('previous-page').disabled=selectedGroup===1;
+      document.getElementById('next-page').disabled=selectedGroup===2;
+      rows.forEach(row => {
         const tr = document.createElement('tr');
         [row.name, row.present ? 'Tu' : 'Není tu', formatTime(row.created_at)].forEach((value, i) => {
           const td = document.createElement('td');
@@ -144,31 +170,34 @@
         tbody.appendChild(tr);
       });
       if (!rows.length) { const tr=document.createElement('tr'); const td=document.createElement('td'); td.colSpan=3; td.className='empty-state'; td.textContent='Žádný žák neodpovídá vybranému filtru.'; tr.appendChild(td); tbody.appendChild(tr); }
-      document.getElementById('result-count').textContent=`Zobrazeno ${rows.length} z ${students.length} žáků`;
+      document.getElementById('result-count').textContent=`Zobrazeno ${rows.length} z ${scope.length} žáků`;
+      updateSummary();
     }
     function updateSummary() {
-      const present = students.filter(s => s.present).length;
-      document.getElementById('total-count').textContent=students.length;
+      const scope=groupStudents();
+      const present = scope.filter(s => s.present).length;
+      document.getElementById('total-count').textContent=scope.length;
+      document.querySelector('.stat small').textContent=selectedGroup?'Skupina AJ'+selectedGroup:'Celá třída';
       document.getElementById('present-count').textContent=hasSession ? present : '—';
-      document.getElementById('absent-count').textContent=hasSession ? students.length-present : '—';
-      const percent=students.length ? Math.round(present/students.length*100) : 0;
+      document.getElementById('absent-count').textContent=hasSession ? scope.length-present : '—';
+      const percent=scope.length ? Math.round(present/scope.length*100) : 0;
       document.getElementById('attendance-progress').value=percent;
-      document.getElementById('progress-label').textContent=hasSession ? `Přítomnost ${percent} % · ${present} z ${students.length} žáků` : 'Spusťte hodinu pro sledování přítomnosti.';
+      document.getElementById('progress-label').textContent=hasSession ? `Přítomnost ${percent} % · ${present} z ${scope.length} žáků` : 'Spusťte hodinu pro sledování přítomnosti.';
       document.getElementById('export-csv').disabled=!hasSession;
       document.getElementById('copy-code').disabled=!hasSession;
       document.getElementById('extend-session').disabled=!hasSession || extending;
       document.getElementById('last-updated').textContent='Aktualizováno '+new Date().toLocaleTimeString('cs-CZ');
     }
     document.getElementById('student-search').addEventListener('input',()=>{currentPage=1;renderStudents();});
-    document.getElementById('page-size').onchange=()=>{currentPage=1;renderStudents();};
+    document.getElementById('page-size').onchange=()=>{selectedGroup=document.getElementById('page-size').value==='14'?1:null;currentPage=1;renderStudents();};
     function showGroup(page){
-      document.getElementById('page-size').value='14';document.getElementById('student-search').value='';activeFilter='all';currentPage=page;
+      document.getElementById('page-size').value='14';document.getElementById('student-search').value='';activeFilter='all';currentPage=page;selectedGroup=page;
       document.querySelectorAll('[data-filter]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.filter==='all')));renderStudents();
     }
     document.getElementById('previous-page').onclick=()=>showGroup(1);
     document.getElementById('next-page').onclick=()=>showGroup(2);
     document.querySelectorAll('[data-filter]').forEach(button => button.onclick=()=>{
-      activeFilter=button.dataset.filter;currentPage=1;document.getElementById('page-size').value='27';
+      activeFilter=button.dataset.filter;currentPage=1;if(activeFilter==='all')selectedGroup=null;document.getElementById('page-size').value=selectedGroup?'14':'27';
       document.querySelectorAll('[data-filter]').forEach(b=>b.setAttribute('aria-pressed',String(b===button)));
       renderStudents();
     });
@@ -286,7 +315,7 @@
         document.getElementById('owner-tools').hidden=data.user?.role!=='owner';
         if (signedIn) {
           document.getElementById('signed-in').textContent='Přihlášen: '+data.user.username;
-          invite=null; await Promise.all([loadList(),loadNetwork()]); return;
+          invite=null; await Promise.all([loadList(),loadNetwork(),loadStudentPasswords()]); return;
         }
         mode=invite?'accept':data.needsSetup?'setup':'login';
         document.getElementById('auth-title').textContent=mode==='setup'?'Založení správce':mode==='accept'?'Vítejte, pane učiteli':'Přihlášení';
@@ -296,8 +325,8 @@
         if (mode==='setup') document.getElementById('username').value='thortyy';
         document.getElementById('password').autocomplete=mode==='login'?'current-password':'new-password';
         document.getElementById('auth-help').textContent=mode==='setup'
-          ? (data.setupConfigured?'Zvol si vlastní heslo alespoň o 12 znacích a zadej jednorázový kód.':'Správce nejprve musí v Cloudflare nastavit jednorázový kód ADMIN_SETUP_KEY (alespoň 20 znaků).')
-          :mode==='accept'?'Zvolte si přihlašovací jméno bez diakritiky a vlastní heslo alespoň o 12 znacích.':'Přihlaste se svým jménem a heslem.';
+          ? (data.setupConfigured?'Zvol si vlastní heslo alespoň o 6 znacích a zadej jednorázový kód.':'Správce nejprve musí v Cloudflare nastavit jednorázový kód ADMIN_SETUP_KEY (alespoň 20 znaků).')
+          :mode==='accept'?'Zvolte si přihlašovací jméno bez diakritiky a vlastní heslo alespoň o 6 znacích.':'Přihlaste se svým jménem a heslem.';
       } catch(err) {document.getElementById('auth-message').textContent=err.message || 'Chyba připojení';}
     }
     document.getElementById('auth-form').addEventListener('submit',async event=>{
@@ -309,7 +338,7 @@
       } catch(err){document.getElementById('auth-message').textContent=err.message;}finally{button.disabled=false;}
     });
     document.getElementById('logout').onclick=async()=>{
-      try {await authPost({action:'logout'});await refreshAuth();document.getElementById('invite-url').value='';document.getElementById('invite-url').hidden=true;}
+      try {await authPost({action:'logout'});await refreshAuth();document.getElementById('invite-url').value='';document.getElementById('invite-url').hidden=true;document.getElementById('student-new-password').value='';document.getElementById('my-password-form').reset();}
       catch(err){document.getElementById('error').textContent=err.message;}
     };
     document.getElementById('invite-button').onclick=async()=>{
@@ -352,6 +381,59 @@
     document.getElementById('confirm-school').onchange=()=>{document.getElementById('network-add').disabled=!networkIp||!document.getElementById('confirm-school').checked;};
     document.getElementById('network-add').onclick=()=>changeNetwork({action:'add_current',confirmSchool:document.getElementById('confirm-school').checked},document.getElementById('network-add'));
     document.getElementById('network-disable').onclick=()=>changeNetwork({action:'disable'},document.getElementById('network-disable'));
+
+    let passwordStudents=[],passwordPolicy=false;
+    function updatePasswordActivation(){
+      document.getElementById('student-password-enable').disabled=!(passwordStudents.length===27&&passwordStudents.every(row=>row.hasPassword)&&document.getElementById('passwords-distributed').checked);
+    }
+    async function loadStudentPasswords(){
+      try{
+        const res=await fetch('/api/student-passwords',{cache:'no-store'});const data=await res.json();if(!res.ok)throw new Error(data.error);
+        passwordStudents=data.students;passwordPolicy=data.enabled;
+        document.getElementById('student-password-badge').textContent=data.enabled?'· zapnuté':'· vypnuté';
+        document.getElementById('student-password-count').textContent=`Heslo má ${data.students.filter(row=>row.hasPassword).length} z ${data.students.length} žáků.`;
+        const select=document.getElementById('student-password-name'),selected=select.value;select.replaceChildren();
+        const blank=document.createElement('option');blank.value='';blank.textContent='Vyberte žáka';select.appendChild(blank);
+        data.students.forEach(row=>{const option=document.createElement('option');option.value=row.name;option.textContent=row.name+(row.hasPassword?' · nastaveno':'');select.appendChild(option);});select.value=selected;
+        document.getElementById('student-password-enable').hidden=data.enabled;
+        document.getElementById('student-password-disable').hidden=!data.enabled;updatePasswordActivation();
+      }catch(err){document.getElementById('student-password-message').textContent=err.message||'Nastavení hesel se nepodařilo načíst.';}
+    }
+    async function studentPasswordPost(body){
+      const res=await fetch('/api/student-passwords',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});const data=await res.json();
+      if(!res.ok)throw new Error(data.error||'Akce se nepodařila.');return data;
+    }
+    document.getElementById('student-password-form').onsubmit=async event=>{
+      event.preventDefault();const name=document.getElementById('student-password-name').value;const known=passwordStudents.find(row=>row.name===name);
+      if(!known)return;
+      if(known.hasPassword&&!window.confirm(`Změnit heslo žáka ${name}? Původní heslo přestane fungovat.`))return;
+      const button=document.getElementById('student-password-save');button.disabled=true;
+      try{
+        await studentPasswordPost({action:'set',name,password:document.getElementById('student-new-password').value,replace:known.hasPassword});
+        document.getElementById('student-new-password').value='';document.getElementById('passwords-distributed').checked=false;
+        document.getElementById('student-password-message').textContent='Heslo pro '+name+' bylo uloženo.';await loadStudentPasswords();
+      }catch(err){document.getElementById('student-password-message').textContent=err.message;}finally{button.disabled=false;}
+    };
+    document.getElementById('passwords-distributed').onchange=updatePasswordActivation;
+    document.getElementById('student-password-enable').onclick=async()=>{
+      const button=document.getElementById('student-password-enable');button.disabled=true;
+      try{await studentPasswordPost({action:'enable',confirmDistributed:document.getElementById('passwords-distributed').checked});await loadStudentPasswords();document.getElementById('student-password-message').textContent='Ochrana je zapnutá. Žáci nyní potřebují vlastní heslo.';}
+      catch(err){document.getElementById('student-password-message').textContent=err.message;}finally{updatePasswordActivation();}
+    };
+    document.getElementById('student-password-disable').onclick=async()=>{
+      if(!window.confirm('Vypnout ověřování hesel žáků? Potom bude opět stačit jméno a kód hodiny.'))return;
+      const button=document.getElementById('student-password-disable');button.disabled=true;
+      try{await studentPasswordPost({action:'disable'});await loadStudentPasswords();document.getElementById('student-password-message').textContent='Ochrana heslem je vypnutá.';}
+      catch(err){document.getElementById('student-password-message').textContent=err.message;}finally{button.disabled=false;}
+    };
+    document.getElementById('my-password-form').onsubmit=async event=>{
+      event.preventDefault();const next=document.getElementById('new-password').value;
+      if(next!==document.getElementById('repeat-password').value){document.getElementById('my-password-message').textContent='Nová hesla se neshodují.';return;}
+      const button=document.getElementById('my-password-save');button.disabled=true;
+      try{await authPost({action:'change_password',currentPassword:document.getElementById('current-password').value,newPassword:next});document.getElementById('my-password-form').reset();document.getElementById('my-password-message').textContent='Heslo změněno. Ostatní přihlášení byla ukončena.';}
+      catch(err){document.getElementById('my-password-message').textContent=err.message;}finally{button.disabled=false;}
+    };
+
     refreshAuth();
 
     setInterval(updateCountdown, 1000);

@@ -25,6 +25,11 @@
   <p id="name-help">Napiš celé jméno a příjmení, např. Josef Kuchař. Přihlášení je otevřené 10 minut od spuštění hodiny učitelem.</p>
   <label for="code">Kód hodiny</label>
   <input type="text" id="code" placeholder="ABCD" autocapitalize="characters" spellcheck="false" required>
+  <div id="student-password-field" hidden>
+    <label for="student-password">Tvoje osobní heslo</label>
+    <input id="student-password" name="student-password" type="password" autocomplete="off" aria-describedby="student-password-help">
+    <p id="student-password-help" class="muted">Heslo ti předá učitel. Je tvoje, nesdílej ho s ostatními.</p>
+  </div>
   <button id="btn" onclick="checkIn()">Jsem tady</button>
   
   <div id="message" role="status"></div>
@@ -61,9 +66,15 @@
       return saved === code.toUpperCase();
     }
 
+    function requireStudentPassword(required){
+      document.getElementById('student-password-field').hidden=!required;
+      document.getElementById('student-password').required=required;
+    }
+    fetch('/api/checkin',{cache:'no-store'}).then(res=>res.ok?res.json():null).then(data=>{if(data)requireStudentPassword(data.passwordRequired);}).catch(()=>{});
     async function checkIn() {
       const name = document.getElementById('name').value.trim();
       const code = document.getElementById('code').value.trim().toUpperCase();
+      const studentPassword=document.getElementById('student-password').value;
       const message = document.getElementById('message');
       const btn = document.getElementById('btn');
 
@@ -72,6 +83,8 @@
         message.style.color = 'red';
         return;
       }
+
+      if(document.getElementById('student-password').required&&!studentPassword){message.textContent='Zadej své osobní heslo od učitele.';message.style.color='red';document.getElementById('student-password').focus();return;}
 
       if (alreadyCheckedIn(code)) {
         message.textContent = 'Z tohoto počítače už jsi zapsán';
@@ -84,7 +97,7 @@
         const res = await fetch('/api/checkin', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ name, code })
+          body: JSON.stringify({ name, code, studentPassword })
         });
 
         const data = await res.json();
@@ -93,10 +106,12 @@
           // Ulož, že z tohoto počítače už byl tento kód použit
           localStorage.setItem('dochazka_code', code);
           
+          document.getElementById('student-password').value='';
           message.textContent = 'Úspěšně zapsáno!';
           message.style.color = 'green';
           btn.disabled = true;
         } else {
+          if(data.passwordRequired){requireStudentPassword(true);document.getElementById('student-password').focus();}
           message.textContent = data.error || 'Chyba';
           message.style.color = 'red';
         }

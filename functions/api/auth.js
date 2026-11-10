@@ -1,3 +1,4 @@
+import {ensureStudentPasswords,passwordAttempt,failedPassword} from '../_shared/student-passwords.js';
 import { json } from '../_shared/attendance.js';
 import { ensureAuth, currentUser, sameOrigin, randomToken, digest, passwordHash, sessionResponse } from '../_shared/auth.js';
 
@@ -29,6 +30,21 @@ export async function onRequestPost(context) {
       await env.DB.prepare('INSERT INTO admin_invites (token_hash,expires_at) VALUES (?,?)').bind(await digest(token),Date.now()+86400000).run();
       return json({url:new URL('/admin',request.url).href+'#invite='+token});
     }
+    if(body.action==='change_password'){
+      if(!user)return json({error:'Přihlas se do administrace'},401);
+      if(typeof body.currentPassword!=='string'||typeof body.newPassword!=='string'||body.newPassword.length<6||body.newPassword.length>128)return json({error:'Nové heslo musí mít 6–128 znaků.'},400);
+      await ensureStudentPasswords(env.DB);const attempt=await passwordAttempt(context,'admin-change:'+user.username);
+      if(attempt.blocked)return json({error:'Příliš mnoho nesprávných hesel. Zkus to za 15 minut.'},429);
+      const record=await env.DB.prepare('SELECT salt,password_hash FROM admin_users WHERE username=?').bind(user.username).first();
+      if(!record||await passwordHash(body.currentPassword,record.salt)!==record.password_hash){await failedPassword(env.DB,attempt.key);return json({error:'Současné heslo není správné'},401);}
+      const salt=randomToken(),hash=await passwordHash(body.newPassword,salt);
+      await env.DB.batch([
+        env.DB.prepare('UPDATE admin_users SET salt=?,password_hash=? WHERE username=?').bind(salt,hash,user.username),
+        env.DB.prepare('DELETE FROM admin_sessions WHERE username=?').bind(user.username),
+        env.DB.prepare('DELETE FROM password_failures WHERE key=?').bind(attempt.key)
+      ]);
+      return sessionResponse(env,user.username);
+    }
     if (!['setup','accept','login'].includes(body.action)) return json({error:'Neplatná akce'},400);
     // Limit platí i při opakovaných pokusech se špatným heslem nebo kódem.
     const limitKey=await digest((request.headers.get('CF-Connecting-IP')||'unknown')+':'+Math.floor(Date.now()/900000));
@@ -39,7 +55,7 @@ export async function onRequestPost(context) {
     if (limit.count>20) return json({error:'Příliš mnoho pokusů. Zkus to za 15 minut.'},429);
     const username=typeof body.username==='string'?body.username.trim().toLowerCase():'';
     const password=body.password;
-    if (!/^[a-z0-9._-]{3,40}$/.test(username) || typeof password!=='string' || password.length<12 || password.length>128) return json({error:'Jméno musí mít 3–40 znaků bez mezer a diakritiky. Heslo musí mít 12–128 znaků.'},400);
+    if (!/^[a-z0-9._-]{3,40}$/.test(username) || typeof password!=='string' || password.length<6 || password.length>128) return json({error:'Jméno musí mít 3–40 znaků bez mezer a diakritiky. Heslo musí mít 6–128 znaků.'},400);
     if (body.action==='login') {
       const found=await env.DB.prepare('SELECT * FROM admin_users WHERE username=?').bind(username).first();
       const calculated=await passwordHash(password,found?.salt || 'invalid-login-salt');
