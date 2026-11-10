@@ -123,6 +123,7 @@
       const tbody = document.getElementById('list');
       tbody.replaceChildren();
       const pageSize=Number(document.getElementById('page-size').value);
+      document.querySelector('.roster-card').dataset.group=pageSize===14?String(currentPage):'all';
       const pages=Math.max(1,Math.ceil(rows.length/pageSize));
       currentPage=Math.min(currentPage,pages);
       document.getElementById('page-info').textContent=`${pageSize===14 && !query && activeFilter==='all' ? 'AJ'+currentPage+' · ' : ''}${currentPage} / ${pages}`;
