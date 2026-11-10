@@ -89,7 +89,7 @@
     <tbody id="list"></tbody>
   </table>
   </div>
-  <div class="pagination"><label for="page-size">Na stránce <select id="page-size"><option value="14">Po Prchala (14 žáků)</option><option value="27">Celá třída</option></select></label><div><button id="previous-page" class="secondary" type="button">Předchozí</button><span id="page-info" class="muted"></span><button id="next-page" class="secondary" type="button">Další</button></div></div>
+  <div class="pagination"><label for="page-size">Skupiny <select id="page-size"><option value="14">AJ1 / AJ2</option><option value="27">Celá třída</option></select></label><div><button id="previous-page" class="secondary" type="button">AJ1</button><span id="page-info" class="muted"></span><button id="next-page" class="secondary" type="button">AJ2</button></div></div>
   </section>
 </main>
 
@@ -125,9 +125,9 @@
       const pageSize=Number(document.getElementById('page-size').value);
       const pages=Math.max(1,Math.ceil(rows.length/pageSize));
       currentPage=Math.min(currentPage,pages);
-      document.getElementById('page-info').textContent=`${currentPage} / ${pages}`;
-      document.getElementById('previous-page').disabled=currentPage<=1;
-      document.getElementById('next-page').disabled=currentPage>=pages;
+      document.getElementById('page-info').textContent=`${pageSize===14 && !query && activeFilter==='all' ? 'AJ'+currentPage+' · ' : ''}${currentPage} / ${pages}`;
+      document.getElementById('previous-page').disabled=pageSize===14 && currentPage===1 && activeFilter==='all' && !query;
+      document.getElementById('next-page').disabled=pageSize===14 && currentPage===2 && activeFilter==='all' && !query;
       rows.slice((currentPage-1)*pageSize,currentPage*pageSize).forEach(row => {
         const tr = document.createElement('tr');
         [row.name, row.present ? 'Tu' : 'Není tu', formatTime(row.created_at)].forEach((value, i) => {
@@ -160,10 +160,14 @@
     }
     document.getElementById('student-search').addEventListener('input',()=>{currentPage=1;renderStudents();});
     document.getElementById('page-size').onchange=()=>{currentPage=1;renderStudents();};
-    document.getElementById('previous-page').onclick=()=>{currentPage--;renderStudents();};
-    document.getElementById('next-page').onclick=()=>{currentPage++;renderStudents();};
+    function showGroup(page){
+      document.getElementById('page-size').value='14';document.getElementById('student-search').value='';activeFilter='all';currentPage=page;
+      document.querySelectorAll('[data-filter]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.filter==='all')));renderStudents();
+    }
+    document.getElementById('previous-page').onclick=()=>showGroup(1);
+    document.getElementById('next-page').onclick=()=>showGroup(2);
     document.querySelectorAll('[data-filter]').forEach(button => button.onclick=()=>{
-      activeFilter=button.dataset.filter;currentPage=1;
+      activeFilter=button.dataset.filter;currentPage=1;document.getElementById('page-size').value='27';
       document.querySelectorAll('[data-filter]').forEach(b=>b.setAttribute('aria-pressed',String(b===button)));
       renderStudents();
     });
