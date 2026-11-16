@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Docházka</title>
-  <script>(() => {const root = document.documentElement;const key = 'dochazka_theme';let theme = 'dark';try { if (localStorage.getItem(key) === 'light') theme = 'light'; } catch {}root.dataset.theme = theme;function updateButton() {const button = document.getElementById('theme-toggle');if (!button) return;const label = root.dataset.theme === 'dark' ? 'Přepnout na světlý vzhled' : 'Přepnout na tmavý vzhled';button.setAttribute('aria-label', label);button.setAttribute('title', label);button.setAttribute('aria-pressed', String(root.dataset.theme === 'dark'));}document.addEventListener('DOMContentLoaded', () => {updateButton();document.getElementById('theme-toggle')?.addEventListener('click', () => {theme = root.dataset.theme === 'dark' ? 'light' : 'dark';root.dataset.theme = theme;try { localStorage.setItem(key, theme); } catch {}updateButton();});});window.addEventListener('storage', event => {if (event.key !== key && event.key !== null) return;root.dataset.theme = event.newValue === 'light' ? 'light' : 'dark';updateButton();});})();</script>
+  <script>(()=>{const t=document.documentElement,e="dochazka_theme";let a="dark";try{"light"===localStorage.getItem(e)&&(a="light")}catch{}function d(){const e=document.getElementById("theme-toggle");if(!e)return;const a="dark"===t.dataset.theme?"Přepnout na světlý vzhled":"Přepnout na tmavý vzhled";e.setAttribute("aria-label",a),e.setAttribute("title",a),e.setAttribute("aria-pressed",String("dark"===t.dataset.theme))}t.dataset.theme=a,document.addEventListener("DOMContentLoaded",()=>{d(),document.getElementById("theme-toggle")?.addEventListener("click",()=>{a="dark"===t.dataset.theme?"light":"dark",t.dataset.theme=a;try{localStorage.setItem(e,a)}catch{}d()})}),window.addEventListener("storage",a=>{a.key!==e&&null!==a.key||(t.dataset.theme="light"===a.newValue?"light":"dark",d())})})();</script>
   <link rel="stylesheet" href="/style.css">
 </head>
 <body class="student-page">
@@ -30,7 +30,7 @@
     <input id="student-password" name="student-password" type="password" autocomplete="off" aria-describedby="student-password-help">
     <p id="student-password-help" class="muted">Heslo ti předá učitel. Je tvoje, nesdílej ho s ostatními.</p>
   </div>
-  <button id="btn" onclick="checkIn()">Jsem tady</button>
+  <button id="btn" onclick="checkIn()"><span>Jsem tady</span><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M5 12h14m-5-5 5 5-5 5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
   
   <div id="message" role="status"></div>
   </main>
@@ -44,82 +44,8 @@
       <div id="arcade-root"></div>
     </details>
   </section>
-  <script>
-    (() => {
-      const panel=document.getElementById('games-panel'), status=document.getElementById('arcade-status'), retry=document.getElementById('arcade-retry');
-      let loaded=false, loading=false;
-      async function openArcade(){
-        if(loaded||loading)return;
-        loading=true;status.hidden=false;status.textContent='Připravuji herní pauzu…';retry.hidden=true;
-        try {const module=await import('/games.js');await module.initArcade(document.getElementById('arcade-root'),panel);loaded=true;status.hidden=true;}
-        catch {status.textContent='Hry se nepodařilo načíst. Zápis docházky funguje dál.';retry.hidden=false;}
-        finally {loading=false;}
-      }
-      panel.addEventListener('toggle',()=>{if(panel.open)openArcade();});retry.addEventListener('click',openArcade);
-    })();
-  </script>
+  <script>(()=>{const e=document.getElementById("games-panel"),t=document.getElementById("arcade-status"),n=document.getElementById("arcade-retry");let d=!1,a=!1;async function i(){if(!d&&!a){a=!0,t.hidden=!1,t.textContent="Připravuji herní pauzu…",n.hidden=!0;try{const n=await(import("/games.js"));await n.initArcade(document.getElementById("arcade-root"),e),d=!0,t.hidden=!0}catch{t.textContent="Hry se nepodařilo načíst. Zápis docházky funguje dál.",n.hidden=!1}finally{a=!1}}}e.addEventListener("toggle",()=>{e.open&&i()}),n.addEventListener("click",i)})();</script>
   <footer class="site-footer"><span>docházka<span class="brand-dot">.</span></span><span>Každý příchod se počítá.</span></footer>
-  <script>
-    // Zkontroluj, jestli už se z tohoto počítače na aktuální kód zapsal
-    function alreadyCheckedIn(code) {
-      const saved = localStorage.getItem('dochazka_code');
-      return saved === code.toUpperCase();
-    }
-
-    function requireStudentPassword(required){
-      document.getElementById('student-password-field').hidden=!required;
-      document.getElementById('student-password').required=required;
-    }
-    fetch('/api/checkin',{cache:'no-store'}).then(res=>res.ok?res.json():null).then(data=>{if(data)requireStudentPassword(data.passwordRequired);}).catch(()=>{});
-    async function checkIn() {
-      const name = document.getElementById('name').value.trim();
-      const code = document.getElementById('code').value.trim().toUpperCase();
-      const studentPassword=document.getElementById('student-password').value;
-      const message = document.getElementById('message');
-      const btn = document.getElementById('btn');
-
-      if (!name || !code) {
-        message.textContent = 'Vyplň jméno, příjmení a kód hodiny';
-        message.style.color = 'red';
-        return;
-      }
-
-      if(document.getElementById('student-password').required&&!studentPassword){message.textContent='Zadej své osobní heslo od učitele.';message.style.color='red';document.getElementById('student-password').focus();return;}
-
-      if (alreadyCheckedIn(code)) {
-        message.textContent = 'Z tohoto počítače už jsi zapsán';
-        message.style.color = 'orange';
-        btn.disabled = true;
-        return;
-      }
-
-      try {
-        const res = await fetch('/api/checkin', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ name, code, studentPassword })
-        });
-
-        const data = await res.json();
-
-        if (res.ok) {
-          // Ulož, že z tohoto počítače už byl tento kód použit
-          localStorage.setItem('dochazka_code', code);
-          
-          document.getElementById('student-password').value='';
-          message.textContent = 'Úspěšně zapsáno!';
-          message.style.color = 'green';
-          btn.disabled = true;
-        } else {
-          if(data.passwordRequired){requireStudentPassword(true);document.getElementById('student-password').focus();}
-          message.textContent = data.error || 'Chyba';
-          message.style.color = 'red';
-        }
-      } catch (err) {
-        message.textContent = 'Chyba připojení';
-        message.style.color = 'red';
-      }
-    }
-  </script>
+  <script>function alreadyCheckedIn(e){return localStorage.getItem("dochazka_code")===e.toUpperCase()}function requireStudentPassword(e){document.getElementById("student-password-field").hidden=!e,document.getElementById("student-password").required=e}async function checkIn(){const e=document.getElementById("name").value.trim(),t=document.getElementById("code").value.trim().toUpperCase(),o=document.getElementById("student-password").value,n=document.getElementById("message"),d=document.getElementById("btn");if(!e||!t)return n.textContent="Vyplň jméno, příjmení a kód hodiny",void(n.style.color="red");if(document.getElementById("student-password").required&&!o)return n.textContent="Zadej své osobní heslo od učitele.",n.style.color="red",void document.getElementById("student-password").focus();if(alreadyCheckedIn(t))return n.textContent="Z tohoto počítače už jsi zapsán",n.style.color="orange",void(d.disabled=!0);try{const s=await fetch("/api/checkin",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({name:e,code:t,studentPassword:o})}),r=await s.json();s.ok?(localStorage.setItem("dochazka_code",t),document.getElementById("student-password").value="",n.textContent="Úspěšně zapsáno!",n.style.color="green",d.disabled=!0):(r.passwordRequired&&(requireStudentPassword(!0),document.getElementById("student-password").focus()),n.textContent=r.error||"Chyba",n.style.color="red")}catch(e){n.textContent="Chyba připojení",n.style.color="red"}}fetch("/api/checkin",{cache:"no-store"}).then(e=>e.ok?e.json():null).then(e=>{e&&requireStudentPassword(e.passwordRequired)}).catch(()=>{});</script>
 </body>
 </html>

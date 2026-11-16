@@ -73,3 +73,7 @@ Testy: `node --test tests/student-passwords.test.mjs tests/auth.test.mjs`.
 ## Vstup bez učitelského a administrátorského hesla
 
 Aktuální vstup na `/admin` používá pouze volbu Developer / Učitel. Obě role jsou dostupné každému návštěvníkovi bez hesla; nejedná se o ověření identity a Developer není soukromý účet. Staré přihlašování, zakládání přes pozvánky a změna učitelského hesla jsou vypnuté. Dřívější kapitoly o těchto heslech popisují předchozí verzi. Žákovská hesla a jejich nastavení zůstávají zachovaná. Role je uložená v dočasné HttpOnly cookie; přes Změnit roli se návštěvník vrátí na výběr.
+
+## Klientský kód
+
+Klientské JS moduly a inline skripty jsou minifikované bez source map. To snižuje velikost a čitelnost; HTML/JS/CSS potřebné pro vykreslení zůstávají dostupné prohlížeči a minifikace je neutajuje. Původní čitelný kód je v historii repozitáře. Serverové funkce se touto úpravou nemění.
