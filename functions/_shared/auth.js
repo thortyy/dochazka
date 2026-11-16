@@ -1,12 +1,7 @@
 import { json } from './attendance.js';
 const encoder = new TextEncoder();
 export async function ensureAuth(db) {
-  await db.batch([
-    db.prepare(`CREATE TABLE IF NOT EXISTS admin_users (username TEXT PRIMARY KEY, salt TEXT NOT NULL, password_hash TEXT NOT NULL, role TEXT NOT NULL)`),
-    db.prepare(`CREATE TABLE IF NOT EXISTS admin_sessions (token_hash TEXT PRIMARY KEY, username TEXT NOT NULL, expires_at INTEGER NOT NULL)`),
-    db.prepare(`CREATE TABLE IF NOT EXISTS admin_invites (token_hash TEXT PRIMARY KEY, expires_at INTEGER NOT NULL, used INTEGER NOT NULL DEFAULT 0)`),
-    db.prepare(`CREATE TABLE IF NOT EXISTS admin_limits (key TEXT PRIMARY KEY, count INTEGER NOT NULL, expires_at INTEGER NOT NULL)`)
-  ]);
+  await db.prepare('CREATE TABLE IF NOT EXISTS role_sessions (token_hash TEXT PRIMARY KEY, username TEXT NOT NULL, role TEXT NOT NULL, expires_at INTEGER NOT NULL)').run();
 }
 export const randomToken = () => Array.from(crypto.getRandomValues(new Uint8Array(32)), b => b.toString(16).padStart(2, '0')).join('');
 const hex = bytes => Array.from(new Uint8Array(bytes), b => b.toString(16).padStart(2, '0')).join('');
@@ -21,7 +16,7 @@ export function sameOrigin(request) {
 export async function currentUser({request, env}) {
   const token = (request.headers.get('Cookie') || '').split(';').map(s=>s.trim()).find(s=>s.startsWith('__Host-dochazka='))?.slice(16);
   if (!token || !/^[a-f0-9]{64}$/.test(token)) return null;
-  return env.DB.prepare(`SELECT u.username, u.role FROM admin_sessions s JOIN admin_users u ON u.username=s.username WHERE s.token_hash=? AND s.expires_at>?`).bind(await digest(token), Date.now()).first();
+  return env.DB.prepare(`SELECT username,role FROM role_sessions WHERE token_hash=? AND expires_at>?`).bind(await digest(token), Date.now()).first();
 }
 export async function requireAdmin(context, mutation = false) {
   if (mutation && !sameOrigin(context.request)) return json({error:'Neplatný původ požadavku'},403);
@@ -29,9 +24,10 @@ export async function requireAdmin(context, mutation = false) {
   if (!await currentUser(context)) return json({error:'Přihlas se do administrace'},401);
   return null;
 }
-export async function sessionResponse(env, username) {
+export async function sessionResponse(env, role) {
   const token = randomToken();
-  await env.DB.prepare('INSERT INTO admin_sessions (token_hash,username,expires_at) VALUES (?,?,?)').bind(await digest(token),username,Date.now()+12*3600000).run();
+  const username=role==='owner'?'Developer':'Učitel';
+  await env.DB.prepare('INSERT INTO role_sessions (token_hash,username,role,expires_at) VALUES (?,?,?,?)').bind(await digest(token),username,role,Date.now()+12*3600000).run();
   const response = json({success:true});
   response.headers.set('Set-Cookie', `__Host-dochazka=${token}; Path=/; HttpOnly; Secure; SameSite=Strict; Max-Age=43200`);
   return response;

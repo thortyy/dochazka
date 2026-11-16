@@ -11,17 +11,9 @@
 <header class="site-header"><a class="brand" href="/admin" aria-label="Docházka – administrace"><span class="brand-mark"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="m6 12 4 4 8-8" stroke="currentColor" stroke-width="2.7" stroke-linecap="round" stroke-linejoin="round"/></svg></span><span>docházka<span class="brand-dot">.</span></span></a><div class="header-meta"><button id="theme-toggle" class="theme-toggle secondary" type="button" aria-label="Přepnout na světlý vzhled" title="Přepnout na světlý vzhled" aria-pressed="true"><svg class="theme-sun" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M2 12h2m16 0h2M5 5l1.5 1.5m11 11L19 19M5 19l1.5-1.5m11-11L19 5"/></svg><svg class="theme-moon" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M20.5 13A8.5 8.5 0 0 1 11 3.5 8.5 8.5 0 1 0 20.5 13Z"/></svg></button><span class="mode-tag">Pro učitele</span><a class="header-link" href="/">Stránka žáků<svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M5 12h14m-5-5 5 5-5 5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></a></div></header>
   <div class="page-heading"><div><p class="eyebrow">Vše na jednom místě</p><h1>Přehled docházky</h1><p>Více přehledu. Méně papírování.</p></div></div>
   <section id="auth-panel" class="card">
-    <span class="auth-symbol" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="m6 12 4 4 8-8" stroke="currentColor" stroke-width="2.7" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
-    <h2 id="auth-title">Přihlášení</h2>
-    <p id="auth-help" class="muted"></p>
-    <form id="auth-form">
-      <label for="username">Přihlašovací jméno</label>
-      <input id="username" name="username" autocomplete="username" required minlength="3" maxlength="40">
-      <label for="password">Heslo</label>
-      <input id="password" name="password" type="password" autocomplete="current-password" required minlength="6" maxlength="128">
-      <div id="setup-field" hidden><label for="setup-key">Jednorázový kód pro založení administrace</label><input id="setup-key" type="password" autocomplete="off"></div>
-      <button id="auth-submit" type="submit">Přihlásit se</button>
-    </form>
+    <h2>Jak chcete pokračovat?</h2>
+    <p class="muted">Vyberte roli. Heslo není potřeba.</p>
+    <div class="role-options"><button id="role-developer" type="button">Developer</button><button id="role-teacher" type="button" class="secondary">Učitel</button></div>
     <p id="auth-message" role="status"></p>
   </section>
   <main id="dashboard" hidden>
@@ -49,14 +41,7 @@
   <div class="attendance-progress"><div class="topbar"><span id="progress-label">Čekáme na načtení docházky</span><span id="last-updated" class="muted"></span></div>
     <progress id="attendance-progress" value="0" max="100" aria-label="Podíl přítomných žáků"></progress>
   </div>
-  <section id="owner-tools" class="card" hidden>
-    <details><summary>Správa přístupu pro učitele</summary>
-    <p class="muted">Vytvořte jednorázovou pozvánku platnou 24 hodin. Učitel si přes ni zvolí své jméno a heslo. Odkaz předejte pouze učiteli.</p>
-    <button id="invite-button" class="secondary">Vytvořit pozvánku učitele</button>
-    <input id="invite-url" aria-label="Odkaz pro učitele" readonly hidden>
-    <p id="invite-message" role="status"></p>
-    </details>
-  </section>
+
   <section class="card" id="network-tools">
     <details id="network-details"><summary>Školní síť <span id="network-badge" class="muted"></span></summary>
       <p class="muted">Omezuje pouze zápis žáků. Administrace a ruční opravy fungují odkudkoliv.</p>
@@ -85,17 +70,7 @@
       <p id="student-password-message" role="status" class="muted"></p>
     </details>
   </section>
-  <section class="card" id="my-password-tools">
-    <details><summary>Změnit moje heslo</summary>
-      <form id="my-password-form">
-        <label for="current-password">Současné heslo</label><input id="current-password" type="password" autocomplete="current-password" required>
-        <label for="new-password">Nové heslo (alespoň 6 znaků)</label><input id="new-password" type="password" autocomplete="new-password" minlength="6" maxlength="128" required>
-        <label for="repeat-password">Nové heslo znovu</label><input id="repeat-password" type="password" autocomplete="new-password" minlength="6" maxlength="128" required>
-        <button type="submit" id="my-password-save" class="secondary">Změnit heslo</button>
-      </form>
-      <p id="my-password-message" class="muted" role="status"></p>
-    </details>
-  </section>
+
   </aside>
   <section class="card roster-card">
   <div class="topbar roster-heading"><div><p class="eyebrow">Vaše třída</p><h2>Seznam žáků</h2><span class="muted" id="refresh-rate">Podle příjmení · aktualizace každých 5 sekund</span></div><button id="export-csv" class="secondary" disabled>Stáhnout CSV</button></div>
@@ -291,61 +266,27 @@
       }
     }
 
-    let mode = 'login';
-    let invite = new URLSearchParams(location.hash.slice(1)).get('invite');
-    if (invite) history.replaceState(null, '', location.pathname);
-    async function authPost(body) {
-      const res = await fetch('/api/auth', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Akce se nezdařila');
-      return data;
+    async function authPost(body){
+      const res=await fetch('/api/auth',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});const data=await res.json();if(!res.ok)throw new Error(data.error||'Vstup se nepodařil');return data;
     }
-    async function refreshAuth() {
-      try {
-        const res=await fetch('/api/auth',{cache:'no-store'});
-        const data=await res.json();
-        if (!res.ok) throw new Error(data.error);
-        signedIn=Boolean(data.user);
-        if(!signedIn)clearTimeout(refreshTimer);
-        document.getElementById('dashboard').hidden=!signedIn;
-        document.getElementById('auth-panel').hidden=signedIn;
-        students=[];
-        document.getElementById('list').replaceChildren();
-        document.getElementById('code').textContent='----';
-        document.getElementById('owner-tools').hidden=data.user?.role!=='owner';
-        if (signedIn) {
-          document.getElementById('signed-in').textContent='Přihlášen: '+data.user.username;
-          invite=null; await Promise.all([loadList(),loadNetwork(),loadStudentPasswords()]); return;
-        }
-        mode=invite?'accept':data.needsSetup?'setup':'login';
-        document.getElementById('auth-title').textContent=mode==='setup'?'Založení správce':mode==='accept'?'Vítejte, pane učiteli':'Přihlášení';
-        document.getElementById('auth-submit').textContent=mode==='login'?'Přihlásit se':'Nastavit heslo a pokračovat';
-        document.getElementById('setup-field').hidden=mode!=='setup';
-        document.getElementById('username').readOnly=mode==='setup';
-        if (mode==='setup') document.getElementById('username').value='thortyy';
-        document.getElementById('password').autocomplete=mode==='login'?'current-password':'new-password';
-        document.getElementById('auth-help').textContent=mode==='setup'
-          ? (data.setupConfigured?'Zvol si vlastní heslo alespoň o 6 znacích a zadej jednorázový kód.':'Správce nejprve musí v Cloudflare nastavit jednorázový kód ADMIN_SETUP_KEY (alespoň 20 znaků).')
-          :mode==='accept'?'Zvolte si přihlašovací jméno bez diakritiky a vlastní heslo alespoň o 6 znacích.':'Přihlaste se svým jménem a heslem.';
-      } catch(err) {document.getElementById('auth-message').textContent=err.message || 'Chyba připojení';}
+    async function refreshAuth(){
+      try{
+        const res=await fetch('/api/auth',{cache:'no-store'});const data=await res.json();if(!res.ok)throw new Error(data.error);
+        signedIn=Boolean(data.user);if(!signedIn)clearTimeout(refreshTimer);
+        document.getElementById('dashboard').hidden=!signedIn;document.getElementById('auth-panel').hidden=signedIn;
+        students=[];document.getElementById('list').replaceChildren();document.getElementById('code').textContent='----';
+        if(signedIn){document.getElementById('signed-in').textContent='Role: '+data.user.username;await Promise.all([loadList(),loadNetwork(),loadStudentPasswords()]);}
+      }catch(err){document.getElementById('auth-message').textContent=err.message;}
     }
-    document.getElementById('auth-form').addEventListener('submit',async event=>{
-      event.preventDefault();const button=document.getElementById('auth-submit');button.disabled=true;
-      try {
-        await authPost({action:mode,username:document.getElementById('username').value,password:document.getElementById('password').value,setupKey:document.getElementById('setup-key').value,invite});
-        document.getElementById('password').value='';document.getElementById('setup-key').value='';document.getElementById('auth-message').textContent='';
-        await refreshAuth();
-      } catch(err){document.getElementById('auth-message').textContent=err.message;}finally{button.disabled=false;}
-    });
-    document.getElementById('logout').onclick=async()=>{
-      try {await authPost({action:'logout'});await refreshAuth();document.getElementById('invite-url').value='';document.getElementById('invite-url').hidden=true;document.getElementById('student-new-password').value='';document.getElementById('my-password-form').reset();}
-      catch(err){document.getElementById('error').textContent=err.message;}
-    };
-    document.getElementById('invite-button').onclick=async()=>{
-      const button=document.getElementById('invite-button');button.disabled=true;
-      try {const data=await authPost({action:'invite'});const input=document.getElementById('invite-url');input.value=data.url;input.hidden=false;input.select();document.getElementById('invite-message').textContent='Zkopírujte odkaz a předejte ho učiteli.';}
-      catch(err){document.getElementById('invite-message').textContent=err.message;}finally{button.disabled=false;}
-    };
+    async function chooseRole(role){
+      const buttons=[document.getElementById('role-developer'),document.getElementById('role-teacher')];buttons.forEach(b=>b.disabled=true);
+      try{await authPost({action:'choose_role',role});document.getElementById('auth-message').textContent='';await refreshAuth();}
+      catch(err){document.getElementById('auth-message').textContent=err.message;}finally{buttons.forEach(b=>b.disabled=false);}
+    }
+    document.getElementById('role-developer').onclick=()=>chooseRole('developer');
+    document.getElementById('role-teacher').onclick=()=>chooseRole('teacher');
+    document.getElementById('logout').textContent='Změnit roli';
+    document.getElementById('logout').onclick=async()=>{try{await authPost({action:'logout'});document.getElementById('student-new-password').value='';await refreshAuth();}catch(err){document.getElementById('error').textContent=err.message;}};
     async function editStudent(row) {
       if(editing)return;
       if(!window.confirm(`Změnit docházku žáka ${row.name} na „${row.present?'Není tu':'Tu'}“?`))return;
@@ -426,14 +367,6 @@
       try{await studentPasswordPost({action:'disable'});await loadStudentPasswords();document.getElementById('student-password-message').textContent='Ochrana heslem je vypnutá.';}
       catch(err){document.getElementById('student-password-message').textContent=err.message;}finally{button.disabled=false;}
     };
-    document.getElementById('my-password-form').onsubmit=async event=>{
-      event.preventDefault();const next=document.getElementById('new-password').value;
-      if(next!==document.getElementById('repeat-password').value){document.getElementById('my-password-message').textContent='Nová hesla se neshodují.';return;}
-      const button=document.getElementById('my-password-save');button.disabled=true;
-      try{await authPost({action:'change_password',currentPassword:document.getElementById('current-password').value,newPassword:next});document.getElementById('my-password-form').reset();document.getElementById('my-password-message').textContent='Heslo změněno. Ostatní přihlášení byla ukončena.';}
-      catch(err){document.getElementById('my-password-message').textContent=err.message;}finally{button.disabled=false;}
-    };
-
     refreshAuth();
 
     setInterval(updateCountdown, 1000);

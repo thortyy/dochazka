@@ -69,3 +69,7 @@ Učitel i správce mají v administraci **Změnit moje heslo**. Nové heslo má 
 Souhrnné počty i procenta odpovídají vybrané skupině AJ1 (14 žáků), AJ2 (13) nebo celé třídě. Hledání a filtry Tu/Není tu pracují v právě vybrané skupině; Všichni přepne na celou třídu.
 
 Testy: `node --test tests/student-passwords.test.mjs tests/auth.test.mjs`.
+
+## Vstup bez učitelského a administrátorského hesla
+
+Aktuální vstup na `/admin` používá pouze volbu Developer / Učitel. Obě role jsou dostupné každému návštěvníkovi bez hesla; nejedná se o ověření identity a Developer není soukromý účet. Staré přihlašování, zakládání přes pozvánky a změna učitelského hesla jsou vypnuté. Dřívější kapitoly o těchto heslech popisují předchozí verzi. Žákovská hesla a jejich nastavení zůstávají zachovaná. Role je uložená v dočasné HttpOnly cookie; přes Změnit roli se návštěvník vrátí na výběr.

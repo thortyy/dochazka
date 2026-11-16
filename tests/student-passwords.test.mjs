@@ -10,11 +10,8 @@ const sql=new DatabaseSync(':memory:');sql.exec('CREATE TABLE sessions (code TEX
 function statement(query,values=[]){return {bind:(...args)=>statement(query,args),async run(){const r=sql.prepare(query).run(...values);return {meta:{changes:r.changes}}},async first(){return sql.prepare(query).get(...values)??null},async all(){return {results:sql.prepare(query).all(...values)}}};}
 const env={ADMIN_SETUP_KEY:'test-only-bootstrap-123456789',DB:{prepare:statement,async batch(statements){sql.exec('BEGIN');try{const r=[];for(const s of statements)r.push(await s.run());sql.exec('COMMIT');return r}catch(e){sql.exec('ROLLBACK');throw e}}}};
 const ctx=(body,cookie='',origin='https://test.local',ip='203.0.113.1')=>({env,request:new Request('https://test.local/api/test',{method:body?'POST':'GET',headers:{Origin:origin,Cookie:cookie,'Content-Type':'application/json','CF-Connecting-IP':ip},...(body?{body:JSON.stringify(body)}:{})})});
-let res=await auth(ctx({action:'setup',username:'thortyy',password:'admin6',setupKey:env.ADMIN_SETUP_KEY}));assert.equal(res.status,200);let admin=res.headers.get('Set-Cookie').split(';')[0];
-const invitation=await(await auth(ctx({action:'invite'},admin))).json();const inviteToken=new URLSearchParams(new URL(invitation.url).hash.slice(1)).get('invite');
-assert.equal((await auth(ctx({action:'accept',username:'ucitel',password:'short',invite:inviteToken}))).status,400);
-const teacherCreated=await auth(ctx({action:'accept',username:'ucitel',password:'abc123',invite:inviteToken}));assert.equal(teacherCreated.status,200);const teacherCookie=teacherCreated.headers.get('Set-Cookie').split(';')[0];
-assert.equal((await status(ctx(null,teacherCookie))).status,200);
+let res=await auth(ctx({action:'choose_role',role:'developer'}));assert.equal(res.status,200);let admin=res.headers.get('Set-Cookie').split(';')[0];
+const teacherCreated=await auth(ctx({action:'choose_role',role:'teacher'}));const teacherCookie=teacherCreated.headers.get('Set-Cookie').split(';')[0];assert.equal((await status(ctx(null,teacherCookie))).status,200);
 assert.equal((await status(ctx())).status,401);assert.equal((await manage(ctx({action:'disable'}))).status,401);
 assert.equal((await publicPolicy(ctx())).status,200);assert.equal((await(await publicPolicy(ctx())).json()).passwordRequired,false);
 assert.equal((await manage(ctx({action:'set',name:roster[0],password:'a'},admin,'https://evil.test'))).status,403);
@@ -43,11 +40,4 @@ assert.equal((await checkin(ctx({...body,studentPassword:'b'}))).status,200);
 for(let i=0;i<10;i++)assert.equal((await checkin(ctx({...body,name:roster[3],studentPassword:'wrong'}))).status,401);
 assert.equal((await checkin(ctx({...body,name:roster[3],studentPassword:'wrong'}))).status,429);
 assert.equal((await manage(ctx({action:'disable'},admin))).status,200);assert.equal((await checkin(ctx({...body,name:roster[4]}))).status,200);
-assert.equal((await auth(ctx({action:'change_password',currentPassword:'admin6',newPassword:'short'},admin))).status,400);
-assert.equal((await auth(ctx({action:'change_password',currentPassword:'wrong',newPassword:'nové12'},admin))).status,401);
-assert.equal((await auth(ctx({action:'change_password',currentPassword:'admin6',newPassword:'nové12'},admin,'https://evil.test'))).status,403);
-res=await auth(ctx({action:'change_password',currentPassword:'admin6',newPassword:'nové12'},admin));assert.equal(res.status,200);const nextCookie=res.headers.get('Set-Cookie').split(';')[0];
-assert.equal((await list(ctx(null,admin))).status,401);assert.equal((await list(ctx(null,nextCookie))).status,200);
-assert.equal((await auth(ctx({action:'login',username:'thortyy',password:'admin6'}))).status,401);
-assert.equal((await auth(ctx({action:'login',username:'thortyy',password:'nové12'}))).status,200);
-console.log('PASS: student password lengths, setup/activation, server identity binding across browsers, reset, hashes not exposed, attempt protection, admin six-character passwords and session revocation.');
+console.log('PASS student passwords and identity verification with password-free role entry.');
